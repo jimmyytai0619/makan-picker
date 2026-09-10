@@ -1,0 +1,17 @@
+# Dependencies — recreated by `npm install`, never commit
+node_modules
+
+# Build output — recreated by `npm run build`
+dist
+
+# Secrets (API keys go in .env.local later — never commit them)
+.env
+*.local
+
+# Logs
+*.log
+
+# macOS / editor junk
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
