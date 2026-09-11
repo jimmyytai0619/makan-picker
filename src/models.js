@@ -3,18 +3,10 @@
 // This is a JavaScript project, so we can't write TypeScript `interface`s.
 // Instead we use JSDoc `@typedef` comments. They don't run at all — but
 // VS Code reads them and gives you autocomplete + warnings, just like TS.
-
-/**
- * A single place to eat.
- *
- * @typedef {Object} Restaurant
- * @property {string} id            Unique ID (later: Google Places `place_id`)
- * @property {string} name          Display name
- * @property {string} photoUrl      Image URL for the card
- * @property {number} rating        0.0 – 5.0
- * @property {number} distanceInKm  Distance from the user
- * @property {1|2|3|4} priceLevel   1 = cheap … 4 = expensive (same scale Google uses)
- */
+//
+// Phase 1.5 change: data now comes from OpenStreetMap, which has NO ratings,
+// photos or prices. Those fields are now `null` when unknown, and every
+// component must handle that.
 
 /**
  * @typedef {Object} LatLng
@@ -23,27 +15,70 @@
  */
 
 /**
- * @typedef {Object} BudgetRange
- * @property {1|2|3|4} min
- * @property {1|2|3|4} max
+ * @typedef {'cafe'|'restaurant'|'fast_food'|'ice_cream'|'food_court'|'saved'} PlaceCategory
+ * The OSM `amenity` tag, or 'saved' for cafes from the user's own list.
+ */
+
+/**
+ * @typedef {'instagram'|'xhs'|'other'} Platform
+ */
+
+/**
+ * A single place to eat.
+ *
+ * @typedef {Object} Restaurant
+ * @property {string} id                 e.g. "osm-node-123" or "saved-abc"
+ * @property {string} name
+ * @property {PlaceCategory} category
+ * @property {string|null} cuisine       e.g. "burger, pizza" (OSM, often missing)
+ * @property {number|null} lat
+ * @property {number|null} lng
+ * @property {number|null} distanceInKm  straight-line distance from the search point
+ * @property {number|null} rating        always null with OSM — kept for a future data source
+ * @property {1|2|3|4|null} priceLevel   always null with OSM — kept for a future data source
+ * @property {string|null} openingHours  raw OSM text, e.g. "Mo-Su 08:00-22:00"
+ * @property {string|null} photoUrl      always null with OSM; card shows an emoji instead
+ * @property {boolean} isSaved           true if it's in the user's My Cafes list
+ * @property {string|null} sourceUrl     IG / XHS post link, if saved with one
+ * @property {Platform|null} savedFrom
+ */
+
+/**
+ * A cafe the user saved (e.g. copied from Instagram or Xiaohongshu).
+ * Stored in the browser's localStorage.
+ *
+ * @typedef {Object} SavedCafe
+ * @property {string} id
+ * @property {string} name
+ * @property {string|null} link
+ * @property {Platform|null} platform
+ * @property {number} addedAt   timestamp (ms)
+ */
+
+/**
+ * @typedef {Object} ChosenLocation
+ * @property {number} lat
+ * @property {number} lng
+ * @property {string} label   what we show the user, e.g. "Cheras, Kuala Lumpur"
  */
 
 /**
  * What the user picked on the Filter screen.
  *
  * @typedef {Object} SearchFilters
- * @property {LatLng} userLocation
+ * @property {'nearby'|'saved'} source    search the map, or shuffle My Cafes
+ * @property {ChosenLocation|null} location
  * @property {number} maxDistanceKm
- * @property {BudgetRange} budgetRange
- * @property {string} cuisineKeyword  e.g. "nasi lemak", "sushi" — empty = anything
+ * @property {string} moodId              see data/moods.js
+ * @property {string} cuisineKeyword      comma-separated, e.g. "mamak, roti" — empty = anything
  */
 
 /** @type {SearchFilters} */
 export const DEFAULT_FILTERS = {
-  // Hard-coded to roughly Cheras for Phase 1. Later: navigator.geolocation.
-  userLocation: { lat: 3.047, lng: 101.756 },
-  maxDistanceKm: 5,
-  budgetRange: { min: 1, max: 2 },
+  source: 'nearby',
+  location: null, // user must choose — no more fake Cheras default
+  maxDistanceKm: 3,
+  moodId: 'anything',
   cuisineKeyword: '',
 }
 
