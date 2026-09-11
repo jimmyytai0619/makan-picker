@@ -76,6 +76,13 @@ export default function SwipeScreen({ restaurants, likedCount, onLike, onFinish,
       <RestaurantCard key={current.id} restaurant={current} />
 
       <ActionButtons onSkip={goToNext} onLike={handleLike} />
+
+      {/* Nobody swipes all 25 cards. After 2 likes, let them stop early. */}
+      {likedCount >= 2 && (
+        <button onClick={onFinish} className="self-center text-sm font-semibold text-orange-600 underline">
+          Enough! Spin with my {likedCount} likes 🎡
+        </button>
+      )}
     </div>
   )
 }
