@@ -1,24 +1,26 @@
-// Everything that talks to OpenStreetMap lives in this ONE file.
+// Everything that talks to map data lives in this ONE file.
 // Screens never call fetch() directly — they call these functions.
 // If we ever switch to Google Places, only this file changes.
 //
-// Two free OSM servers:
-//   1. Nominatim — turns text ("Cheras") into coordinates ("geocoding")
-//   2. Overpass  — finds map features (cafes, restaurants) near coordinates
+// Two sources:
+//   1. Nominatim — turns text ("Cheras") into coordinates ("geocoding").
+//      The browser calls it directly.
+//   2. Our own /api/places endpoint (api/places.js) — finds cafes and
+//      restaurants near coordinates. It asks the Overpass servers for us,
+//      because Overpass rejects browser requests from our live site.
 //
-// Their rules (free = be polite):
+// OSM's rules (free = be polite):
 //   - Nominatim: max 1 request per second, NO search-as-you-type.
 //     https://operations.osmfoundation.org/policies/nominatim/
-//   - Overpass: shared public server, keep queries small, cache results.
-//   - Both: you MUST show "© OpenStreetMap contributors" in the app.
+//   - You MUST show "© OpenStreetMap contributors" in the app.
 
 import { distanceInKm } from '../utils/geo'
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter'
+const PLACES_API_URL = '/api/places' // same website, so no CORS problems
 
-// Only these values can ever go into an Overpass query (see buildOverpassQuery).
-const ALLOWED_PLACE_TYPES = ['cafe', 'restaurant', 'fast_food', 'ice_cream', 'food_court']
+// Our server tries 2 Overpass servers (12 s each), so wait a little longer than that.
+const PLACES_TIMEOUT_MS = 30000
 
 // ---------------------------------------------------------------------------
 // 1. Geocoding: text -> coordinates
@@ -71,42 +73,17 @@ function shortenLabel(displayName) {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Overpass: coordinates -> nearby places
+// 2. Nearby places (through our own /api/places server endpoint)
 // ---------------------------------------------------------------------------
 
 /**
- * Builds a query in Overpass QL (Overpass's own query language). Read it as:
- *   [out:json]                          answer in JSON
- *   nwr                                 look at nodes, ways and relations (all OSM shapes)
- *   ["amenity"~"^(cafe|restaurant)$"]   whose amenity tag is one of these
- *   ["name"]                            and that have a name
- *   (around:3000,3.04,101.75)           within 3000 m of this point
- *   out center tags;                    return tags + a center point for buildings
- */
-function buildOverpassQuery(center, radiusKm, placeTypes) {
-  // SAFETY: never put user-typed text inside a query language. We only allow
-  // our own fixed words, so nobody can inject extra query code.
-  const safeTypes = placeTypes.filter((t) => ALLOWED_PLACE_TYPES.includes(t))
-  const radiusMeters = Math.round(radiusKm * 1000)
-  const lat = center.lat.toFixed(5)
-  const lng = center.lng.toFixed(5)
-
-  return `[out:json][timeout:25];
-nwr["amenity"~"^(${safeTypes.join('|')})$"]["name"](around:${radiusMeters},${lat},${lng});
-out center tags;`
-}
-
-/**
- * Converts one raw Overpass "element" into our Restaurant model.
+ * Converts one element from /api/places into our Restaurant model.
  * This "mapping" step means the rest of the app never sees OSM's format.
  *
  * @returns {import('../models').Restaurant | null}
  */
 function toRestaurant(element, center) {
-  // Small shops are "nodes" with lat/lon. Buildings are "ways" and only have a
-  // `center` (because we asked for `out center`). `??` = "if left is missing, use right".
-  const lat = element.lat ?? element.center?.lat
-  const lng = element.lon ?? element.center?.lon
+  const { lat, lon: lng } = element
   if (lat == null || lng == null) return null
 
   const tags = element.tags ?? {}
@@ -131,7 +108,7 @@ function toRestaurant(element, center) {
 }
 
 // Remembers answers while the app is open, so pressing "Find food" twice
-// with the same filters doesn't hit the free server twice.
+// with the same filters doesn't ask the server twice.
 const cache = new Map()
 
 /**
@@ -139,30 +116,42 @@ const cache = new Map()
  * @returns {Promise<import('../models').Restaurant[]>} sorted nearest first
  */
 export async function searchNearbyPlaces({ center, radiusKm, placeTypes }) {
-  const query = buildOverpassQuery(center, radiusKm, placeTypes)
-  if (cache.has(query)) return cache.get(query)
-
-  const response = await fetch(OVERPASS_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `data=${encodeURIComponent(query)}`,
+  const params = new URLSearchParams({
+    // Rounded to ~100 m, so people searching from almost the same spot share
+    // one cached answer on Vercel's CDN. Distances still use the exact center.
+    lat: center.lat.toFixed(3),
+    lng: center.lng.toFixed(3),
+    radiusKm: String(radiusKm),
+    types: placeTypes.join(','),
   })
+  const url = `${PLACES_API_URL}?${params}`
+  if (cache.has(url)) return cache.get(url)
 
-  // 429 = "too many requests", 504 = "server too busy". Common on a free server.
-  if (response.status === 429 || response.status === 504) {
-    throw new Error('The free map server is busy right now. Wait 10 seconds and try again.')
+  let response
+  try {
+    response = await fetch(url, { signal: AbortSignal.timeout(PLACES_TIMEOUT_MS) })
+  } catch (err) {
+    // fetch() only THROWS when no answer arrived at all: no internet, or our timeout.
+    // Without this, users would see the browser's raw "Failed to fetch".
+    throw new Error(
+      err.name === 'TimeoutError'
+        ? 'The search took too long. Please try again.'
+        : "Couldn't reach the server. Check your internet connection and try again.",
+    )
   }
+
+  // Our server sends { error: "..." } with a friendly message when something fails.
+  // .catch(() => null): if the body isn't JSON (e.g. an HTML error page), don't crash.
+  const data = await response.json().catch(() => null)
   if (!response.ok) {
-    throw new Error(`Map search failed (error ${response.status}).`)
+    throw new Error(data?.error ?? `Map search failed (error ${response.status}). Please try again.`)
   }
-
-  const data = await response.json()
 
   const places = data.elements
     .map((element) => toRestaurant(element, center))
     .filter((place) => place !== null)
     .sort((a, b) => a.distanceInKm - b.distanceInKm)
 
-  cache.set(query, places)
+  cache.set(url, places)
   return places
 }
