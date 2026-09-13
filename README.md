@@ -1,5 +1,7 @@
 # Makan Apa? 🍜
 
+10/9/2026
+
 A food decision app: filter → swipe → roulette → result.
 Built with React, Vite and Tailwind CSS.
 
