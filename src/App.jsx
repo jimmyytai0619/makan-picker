@@ -10,6 +10,7 @@ import { searchNearbyPlaces } from './services/osm'
 import { useSavedCafes } from './hooks/useSavedCafes'
 import { addOpenStatus } from './utils/openingHours'
 import { markSavedPlaces, matchesKeywords, savedCafeToRestaurant, shuffle } from './utils/results'
+import { addLike } from './utils/likes'
 
 // The screens, as constants so a typo is an error instead of a blank page.
 const SCREENS = {
@@ -29,6 +30,9 @@ export default function App() {
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
   const [results, setResults] = useState([])
   const [likedRestaurants, setLikedRestaurants] = useState([])
+  // Which card the swipe screen is on. Kept HERE (not in SwipeScreen) so it
+  // survives going to the roulette and pressing Back.
+  const [swipeIndex, setSwipeIndex] = useState(0)
   const [chosenRestaurant, setChosenRestaurant] = useState(null)
 
   // Network requests take time and can fail, so they need these two extra states.
@@ -45,6 +49,7 @@ export default function App() {
     setFilters(newFilters)
     setSearchError(null)
     setLikedRestaurants([])
+    setSwipeIndex(0) // new search = start from the first card
 
     // Mode 1: shuffle My Cafes. No network needed.
     if (newFilters.source === 'saved') {
@@ -87,7 +92,8 @@ export default function App() {
   }
 
   function handleLike(restaurant) {
-    setLikedRestaurants((prev) => [...prev, restaurant])
+    // addLike ignores places that are already liked (safety net against duplicates).
+    setLikedRestaurants((prev) => addLike(prev, restaurant))
   }
 
   function handlePicked(restaurant) {
@@ -122,8 +128,10 @@ export default function App() {
         return (
           <SwipeScreen
             restaurants={results}
+            currentIndex={swipeIndex}
             likedCount={likedRestaurants.length}
             onLike={handleLike}
+            onNext={() => setSwipeIndex((i) => i + 1)}
             onFinish={() => setScreen(SCREENS.ROULETTE)}
             onBack={() => setScreen(SCREENS.FILTER)}
           />

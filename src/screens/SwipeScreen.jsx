@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import RestaurantCard from '../components/RestaurantCard'
 import ActionButtons from '../components/ActionButtons'
 
@@ -8,26 +7,24 @@ import ActionButtons from '../components/ActionButtons'
  *
  * @param {{
  *   restaurants: import('../models').Restaurant[],
+ *   currentIndex: number,
  *   likedCount: number,
  *   onLike: (r: import('../models').Restaurant) => void,
+ *   onNext: () => void,
  *   onFinish: () => void,
  *   onBack: () => void,
  * }} props
  */
-export default function SwipeScreen({ restaurants, likedCount, onLike, onFinish, onBack }) {
-  // Local state: only this screen cares which card we're on.
-  const [currentIndex, setCurrentIndex] = useState(0)
-
+export default function SwipeScreen({ restaurants, currentIndex, likedCount, onLike, onNext, onFinish, onBack }) {
+  // The card position (currentIndex) lives in App, not here. If it lived here,
+  // React would forget it when you go to the roulette, and pressing Back would
+  // start again at card 1, letting you like the same place twice.
   const current = restaurants[currentIndex] // undefined once we run out
   const isDone = currentIndex >= restaurants.length
 
-  function goToNext() {
-    setCurrentIndex((i) => i + 1)
-  }
-
   function handleLike() {
     onLike(current) // tell App to save it...
-    goToNext() // ...then show the next card
+    onNext() // ...then show the next card
   }
 
   // --- Case 1: filters matched nothing ---
@@ -75,7 +72,7 @@ export default function SwipeScreen({ restaurants, likedCount, onLike, onFinish,
       {/* key= forces React to treat each restaurant as a brand-new card */}
       <RestaurantCard key={current.id} restaurant={current} />
 
-      <ActionButtons onSkip={goToNext} onLike={handleLike} />
+      <ActionButtons onSkip={onNext} onLike={handleLike} />
 
       {/* Nobody swipes all 25 cards. After 2 likes, let them stop early. */}
       {likedCount >= 2 && (
