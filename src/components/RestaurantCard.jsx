@@ -24,7 +24,7 @@ function formatDistance(km) {
  * @param {{ restaurant: import('../models').Restaurant }} props
  */
 export default function RestaurantCard({ restaurant }) {
-  const { name, category, cuisine, photoUrl, rating, distanceInKm, priceLevel, openingHours, isSaved, sourceUrl, savedFrom } =
+  const { name, category, cuisine, photoUrl, rating, distanceInKm, priceLevel, openingHours, openStatus, isSaved, sourceUrl, savedFrom } =
     restaurant
   const style = CATEGORY_STYLE[category] ?? CATEGORY_STYLE.restaurant
 
@@ -42,6 +42,12 @@ export default function RestaurantCard({ restaurant }) {
         <h2 className="text-xl font-bold leading-tight">{name}</h2>
 
         <div className="flex flex-wrap gap-2 text-sm">
+          {openStatus === 'open' && (
+            <span className="rounded-full bg-emerald-100 px-3 py-1 font-medium text-emerald-800">🟢 Open now</span>
+          )}
+          {openStatus === 'closed' && (
+            <span className="rounded-full bg-gray-200 px-3 py-1 font-medium text-gray-700">🔴 Closed now</span>
+          )}
           {isSaved && (
             <span className="rounded-full bg-rose-100 px-3 py-1 font-medium text-rose-800">❤️ In your list</span>
           )}

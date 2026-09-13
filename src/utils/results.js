@@ -90,6 +90,7 @@ export function savedCafeToRestaurant(cafe) {
     rating: null,
     priceLevel: null,
     openingHours: null,
+    openStatus: 'unknown',
     photoUrl: null,
     isSaved: true,
     sourceUrl: cafe.link,

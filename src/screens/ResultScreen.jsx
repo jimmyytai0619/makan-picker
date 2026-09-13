@@ -14,8 +14,11 @@ export default function ResultScreen({ restaurant, onStartOver }) {
   // Plain links, no API needed. With coordinates we point at the exact spot
   // (many places share names); saved cafes only have a name, so we search it.
   const mapsUrl = hasCoords
-    ? `https://www.google.com/maps/search/?api=1&query=${restaurant.lat},${restaurant.lng}`
+    ? `https://www.google.com/maps/dir/?api=1&destination=${restaurant.lat},${restaurant.lng}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.name)}`
+  const appleMapsUrl = hasCoords
+    ? `https://maps.apple.com/?daddr=${restaurant.lat},${restaurant.lng}`
+    : `https://maps.apple.com/?q=${encodeURIComponent(restaurant.name)}`
   const wazeUrl = hasCoords
     ? `https://waze.com/ul?ll=${restaurant.lat},${restaurant.lng}&navigate=yes`
     : `https://waze.com/ul?q=${encodeURIComponent(restaurant.name)}`
@@ -27,14 +30,14 @@ export default function ResultScreen({ restaurant, onStartOver }) {
       <RestaurantCard restaurant={restaurant} />
 
       <div className="mt-auto flex flex-col gap-3">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <a
             href={mapsUrl}
             target="_blank"
             rel="noreferrer"
             className="rounded-xl bg-orange-500 py-4 text-center font-semibold text-white"
           >
-            Google Maps 🗺️
+            Google 🗺️
           </a>
           <a
             href={wazeUrl}
@@ -43,6 +46,14 @@ export default function ResultScreen({ restaurant, onStartOver }) {
             className="rounded-xl bg-sky-500 py-4 text-center font-semibold text-white"
           >
             Waze 🚗
+          </a>
+          <a
+            href={appleMapsUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-xl bg-gray-900 py-4 text-center font-semibold text-white"
+          >
+            Apple 
           </a>
         </div>
         <button onClick={onStartOver} className="rounded-xl bg-white py-4 text-lg font-semibold shadow">

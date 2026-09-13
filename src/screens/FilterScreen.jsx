@@ -17,6 +17,7 @@ export default function FilterScreen({ initialFilters, savedCount, isSearching, 
   const [maxDistanceKm, setMaxDistanceKm] = useState(initialFilters.maxDistanceKm)
   const [moodId, setMoodId] = useState(initialFilters.moodId)
   const [cuisineKeyword, setCuisineKeyword] = useState(initialFilters.cuisineKeyword)
+  const [hideClosed, setHideClosed] = useState(initialFilters.hideClosed)
 
   const isNearby = source === 'nearby'
   const canSearch = !isSearching && (isNearby ? location !== null : savedCount > 0)
@@ -29,7 +30,7 @@ export default function FilterScreen({ initialFilters, savedCount, isSearching, 
   function handleSubmit(event) {
     event.preventDefault()
     if (!canSearch) return
-    onSearch({ source, location, maxDistanceKm, moodId, cuisineKeyword })
+    onSearch({ source, location, maxDistanceKm, moodId, cuisineKeyword, hideClosed })
   }
 
   return (
@@ -110,6 +111,21 @@ export default function FilterScreen({ initialFilters, savedCount, isSearching, 
         />
         <span className="text-xs text-gray-500">Separate with commas — matches any of them.</span>
       </label>
+
+      {isNearby && (
+        <label className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            checked={hideClosed}
+            onChange={(e) => setHideClosed(e.target.checked)}
+            className="h-5 w-5 accent-orange-500"
+          />
+          <span>
+            <span className="font-semibold">Hide places closed now</span>
+            <span className="block text-xs text-gray-500">Only ~1 in 5 places list their hours. Unknown ones stay.</span>
+          </span>
+        </label>
+      )}
 
       {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 

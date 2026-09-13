@@ -8,6 +8,7 @@ import { DEFAULT_FILTERS } from './models'
 import { findMood } from './data/moods'
 import { searchNearbyPlaces } from './services/osm'
 import { useSavedCafes } from './hooks/useSavedCafes'
+import { addOpenStatus } from './utils/openingHours'
 import { markSavedPlaces, matchesKeywords, savedCafeToRestaurant, shuffle } from './utils/results'
 
 // The screens, as constants so a typo is an error instead of a blank page.
@@ -58,15 +59,16 @@ export default function App() {
     // Mode 2: search OpenStreetMap around the chosen location.
     setIsSearching(true)
     try {
-      const places = await searchNearbyPlaces({
+      const rawPlaces = await searchNearbyPlaces({
         center: newFilters.location,
         radiusKm: newFilters.maxDistanceKm,
         placeTypes: findMood(newFilters.moodId).placeTypes,
       })
+      const places = await addOpenStatus(rawPlaces)
 
-      const matching = markSavedPlaces(places, savedCafes).filter((place) =>
-        matchesKeywords(place, newFilters.cuisineKeyword),
-      )
+      const matching = markSavedPlaces(places, savedCafes)
+        .filter((place) => matchesKeywords(place, newFilters.cuisineKeyword))
+        .filter((place) => !newFilters.hideClosed || place.openStatus !== 'closed')
       // Saved cafes first, then nearest. places is already sorted by distance,
       // and sort() keeps that order for ties, so this is all we need.
       const ordered = [...matching].sort((a, b) => Number(b.isSaved) - Number(a.isSaved))

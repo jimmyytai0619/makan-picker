@@ -37,6 +37,7 @@
  * @property {number|null} rating        always null with OSM — kept for a future data source
  * @property {1|2|3|4|null} priceLevel   always null with OSM — kept for a future data source
  * @property {string|null} openingHours  raw OSM text, e.g. "Mo-Su 08:00-22:00"
+ * @property {'open'|'closed'|'unknown'} openStatus  worked out from openingHours at search time
  * @property {string|null} photoUrl      always null with OSM; card shows an emoji instead
  * @property {boolean} isSaved           true if it's in the user's My Cafes list
  * @property {string|null} sourceUrl     IG / XHS post link, if saved with one
@@ -71,6 +72,7 @@
  * @property {number} maxDistanceKm
  * @property {string} moodId              see data/moods.js
  * @property {string} cuisineKeyword      comma-separated, e.g. "mamak, roti" — empty = anything
+ * @property {boolean} hideClosed         hide places we KNOW are closed right now
  */
 
 /** @type {SearchFilters} */
@@ -80,6 +82,7 @@ export const DEFAULT_FILTERS = {
   maxDistanceKm: 3,
   moodId: 'anything',
   cuisineKeyword: '',
+  hideClosed: false,
 }
 
 /** Turns a priceLevel number into "RM", "RM RM", ... for display. */
