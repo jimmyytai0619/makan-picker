@@ -100,6 +100,7 @@ function toRestaurant(element, center) {
     rating: null,
     priceLevel: null,
     openingHours: tags.opening_hours ?? null,
+    openStatus: 'unknown', // filled in by addOpenStatus()
     photoUrl: null,
     isSaved: false,
     sourceUrl: null,
