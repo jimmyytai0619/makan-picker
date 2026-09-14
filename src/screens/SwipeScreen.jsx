@@ -13,11 +13,12 @@ import ActionButtons from '../components/ActionButtons'
  *   likedCount: number,
  *   onLike: (r: import('../models').Restaurant) => void,
  *   onNext: () => void,
+ *   onHide: (r: import('../models').Restaurant) => void,
  *   onShowPicks: () => void,
  *   onBack: () => void,
  * }} props
  */
-export default function SwipeScreen({ restaurants, currentIndex, likedCount, onLike, onNext, onShowPicks, onBack }) {
+export default function SwipeScreen({ restaurants, currentIndex, likedCount, onLike, onNext, onHide, onShowPicks, onBack }) {
   // The card position (currentIndex) lives in App, not here, so it survives
   // leaving this screen (e.g. peeking at your picks and coming back).
   const current = restaurants[currentIndex] // undefined once we run out
@@ -119,6 +120,18 @@ export default function SwipeScreen({ restaurants, currentIndex, likedCount, onL
       <p className="text-center text-xs font-bold text-plum/40">Swipe right if it looks yummy 😋 · left to skip</p>
 
       <ActionButtons onSkip={() => setExit('left')} onLike={() => setExit('right')} disabled={exit !== null} />
+
+      {/* The free map often doesn't know a place closed down, so let the user hide it.
+          (Not for My Cafes — those are the user's own list.) */}
+      {current.category !== 'saved' && (
+        <button
+          onClick={() => onHide(current)}
+          disabled={exit !== null}
+          className="self-center rounded-full bg-white/80 px-3 py-1.5 text-xs font-extrabold text-plum/50 ring-1 ring-candy-pink-soft transition hover:text-candy-pink active:scale-95 disabled:opacity-40"
+        >
+          🚫 Closed down? Never show it again
+        </button>
+      )}
     </div>
   )
 }

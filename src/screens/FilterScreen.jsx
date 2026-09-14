@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import LocationPicker from '../components/LocationPicker'
-import { MOODS } from '../data/moods'
 
 const PLAY_STYLES = [
   { id: 'swipe', emoji: '👆', label: 'Swipe', hint: 'Yum or nope, then see your picks' },
@@ -12,37 +11,33 @@ const inputClass =
   'placeholder:font-normal placeholder:text-plum/40 focus:outline-none focus:ring-2 focus:ring-candy-pink'
 
 /**
- * The start screen: how to decide (swipe or roulette), where, and what you feel like.
+ * The start screen: how to decide (swipe or roulette), where, and any craving.
  *
  * @param {{
  *   initialFilters: import('../models').SearchFilters,
  *   savedCount: number,
+ *   hiddenCount: number,
  *   isSearching: boolean,
  *   error: string | null,
  *   onSearch: (f: import('../models').SearchFilters) => void,
+ *   onUnhideAll: () => void,
  * }} props
  */
-export default function FilterScreen({ initialFilters, savedCount, isSearching, error, onSearch }) {
+export default function FilterScreen({ initialFilters, savedCount, hiddenCount, isSearching, error, onSearch, onUnhideAll }) {
   const [playStyle, setPlayStyle] = useState(initialFilters.playStyle)
   const [source, setSource] = useState(initialFilters.source)
   const [location, setLocation] = useState(initialFilters.location)
   const [maxDistanceKm, setMaxDistanceKm] = useState(initialFilters.maxDistanceKm)
-  const [moodId, setMoodId] = useState(initialFilters.moodId)
   const [cuisineKeyword, setCuisineKeyword] = useState(initialFilters.cuisineKeyword)
   const [hideClosed, setHideClosed] = useState(initialFilters.hideClosed)
 
   const isNearby = source === 'nearby'
   const canSearch = !isSearching && (isNearby ? location !== null : savedCount > 0)
 
-  function handlePickMood(mood) {
-    setMoodId(mood.id)
-    setCuisineKeyword(mood.keyword) // fills the box; user can still edit it
-  }
-
   function handleSubmit(event) {
     event.preventDefault()
     if (!canSearch) return
-    onSearch({ playStyle, source, location, maxDistanceKm, moodId, cuisineKeyword, hideClosed })
+    onSearch({ playStyle, source, location, maxDistanceKm, cuisineKeyword, hideClosed })
   }
 
   const submitLabel = isSearching
@@ -111,24 +106,6 @@ export default function FilterScreen({ initialFilters, savedCount, isSearching, 
               <LocationPicker value={location} onChange={setLocation} />
             </div>
 
-            <div className="flex flex-col gap-2">
-              <span className="font-extrabold text-plum">Mood</span>
-              <div className="flex flex-wrap gap-2">
-                {MOODS.map((mood) => (
-                  <button
-                    key={mood.id}
-                    type="button"
-                    onClick={() => handlePickMood(mood)}
-                    className={`rounded-full px-3 py-2 text-sm font-bold transition active:scale-95 ${
-                      moodId === mood.id ? 'bg-candy-pink text-white shadow-sm' : 'bg-cream text-plum/70'
-                    }`}
-                  >
-                    {mood.emoji} {mood.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <label className="flex flex-col gap-2">
               <span className="font-extrabold text-plum">
                 Max distance: <span className="text-candy-pink">{maxDistanceKm} km</span>
@@ -156,7 +133,7 @@ export default function FilterScreen({ initialFilters, savedCount, isSearching, 
           <span className="font-extrabold text-plum">Craving (optional)</span>
           <input
             type="text"
-            placeholder="e.g. mamak, nasi lemak, coffee"
+            placeholder="e.g. mamak, nasi lemak, bubble tea"
             value={cuisineKeyword}
             onChange={(e) => setCuisineKeyword(e.target.value)}
             className={inputClass}
@@ -189,6 +166,12 @@ export default function FilterScreen({ initialFilters, savedCount, isSearching, 
       >
         {submitLabel}
       </button>
+
+      {hiddenCount > 0 && (
+        <button type="button" onClick={onUnhideAll} className="-mt-2 text-xs font-bold text-plum/45 hover:text-candy-pink">
+          🙈 {hiddenCount} hidden place{hiddenCount === 1 ? '' : 's'} · Show them again
+        </button>
+      )}
     </form>
   )
 }

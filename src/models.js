@@ -74,7 +74,6 @@
  * @property {'nearby'|'saved'} source    search the map, or shuffle My Cafes
  * @property {ChosenLocation|null} location
  * @property {number} maxDistanceKm
- * @property {string} moodId              see data/moods.js
  * @property {string} cuisineKeyword      comma-separated, e.g. "mamak, roti" — empty = anything
  * @property {boolean} hideClosed         hide places we KNOW are closed right now
  */
@@ -85,7 +84,6 @@ export const DEFAULT_FILTERS = {
   source: 'nearby',
   location: null, // user must choose — no more fake Cheras default
   maxDistanceKm: 3,
-  moodId: 'anything',
   cuisineKeyword: '',
   hideClosed: false,
 }

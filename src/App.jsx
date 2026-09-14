@@ -6,9 +6,10 @@ import RouletteScreen from './screens/RouletteScreen'
 import ResultScreen from './screens/ResultScreen'
 import SavedScreen from './screens/SavedScreen'
 import { DEFAULT_FILTERS } from './models'
-import { findMood } from './data/moods'
+import { ALL_PLACE_TYPES } from './data/placeTypes'
 import { searchNearbyPlaces } from './services/osm'
 import { useSavedCafes } from './hooks/useSavedCafes'
+import { useHiddenPlaces } from './hooks/useHiddenPlaces'
 import { addOpenStatus } from './utils/openingHours'
 import { markSavedPlaces, matchesKeywords, savedCafeToRestaurant, shuffle } from './utils/results'
 import { addLike } from './utils/likes'
@@ -47,8 +48,15 @@ export default function App() {
   const [isSearching, setIsSearching] = useState(false)
   const [searchError, setSearchError] = useState(null)
 
-  // Our custom hook: the saved list + functions to change it (auto-saved to localStorage).
+  // Custom hooks: lists saved in the browser (localStorage).
   const { cafes: savedCafes, addCafes, removeCafe } = useSavedCafes()
+  const { hiddenIds, hidePlace, unhideAll } = useHiddenPlaces()
+
+  // Derived: the results without the places the user hid ("closed down").
+  // Hiding the current card removes it from this list, so the next card slides
+  // into the same position — swipeIndex doesn't need to change.
+  const hiddenSet = new Set(hiddenIds)
+  const visibleResults = results.filter((place) => !hiddenSet.has(place.id))
 
   // --- Event handlers ---
 
@@ -64,7 +72,7 @@ export default function App() {
     const rawPlaces = await searchNearbyPlaces({
       center: newFilters.location,
       radiusKm: newFilters.maxDistanceKm,
-      placeTypes: findMood(newFilters.moodId).placeTypes,
+      placeTypes: ALL_PLACE_TYPES,
     })
     const places = await addOpenStatus(rawPlaces)
 
@@ -87,8 +95,11 @@ export default function App() {
     try {
       const found = (await findPlaces(newFilters)).slice(0, MAX_PLACES)
       setResults(found)
-      if (newFilters.playStyle === 'roulette') openWheel('all', found)
-      else setScreen(SCREENS.SWIPE)
+      if (newFilters.playStyle === 'roulette') {
+        openWheel('all', found.filter((place) => !hiddenSet.has(place.id)))
+      } else {
+        setScreen(SCREENS.SWIPE)
+      }
     } catch (err) {
       // Network down, server busy, etc. Stay on the Filter screen and show why.
       setSearchError(err.message)
@@ -106,13 +117,18 @@ export default function App() {
     setLikedRestaurants((prev) => prev.filter((r) => r.id !== restaurant.id))
   }
 
+  function handleHide(restaurant) {
+    hidePlace(restaurant.id)
+    handleRemovePick(restaurant) // a closed place can't be one of your picks either
+  }
+
   /** Put up to 12 random places from `places` on the wheel and show it. */
   function openWheel(source, places) {
     setWheel({ source, places: pickForWheel(places) })
     setScreen(SCREENS.ROULETTE)
   }
 
-  const wheelPool = wheel.source === 'picks' ? likedRestaurants : results
+  const wheelPool = wheel.source === 'picks' ? likedRestaurants : visibleResults
 
   function handleShuffleWheel() {
     setWheel((prev) => ({ ...prev, places: pickForWheel(wheelPool) }))
@@ -139,9 +155,11 @@ export default function App() {
           <FilterScreen
             initialFilters={filters}
             savedCount={savedCafes.length}
+            hiddenCount={hiddenIds.length}
             isSearching={isSearching}
             error={searchError}
             onSearch={handleSearch}
+            onUnhideAll={unhideAll}
           />
         )
 
@@ -151,11 +169,12 @@ export default function App() {
       case SCREENS.SWIPE:
         return (
           <SwipeScreen
-            restaurants={results}
+            restaurants={visibleResults}
             currentIndex={swipeIndex}
             likedCount={likedRestaurants.length}
             onLike={handleLike}
             onNext={() => setSwipeIndex((i) => i + 1)}
+            onHide={handleHide}
             onShowPicks={() => setScreen(SCREENS.PICKS)}
             onBack={() => setScreen(SCREENS.FILTER)}
           />
@@ -165,7 +184,7 @@ export default function App() {
         return (
           <PicksScreen
             picks={likedRestaurants}
-            remainingCount={Math.max(results.length - swipeIndex, 0)}
+            remainingCount={Math.max(visibleResults.length - swipeIndex, 0)}
             onOpen={(restaurant) => openResult(restaurant, SCREENS.PICKS)}
             onRemove={handleRemovePick}
             onSpin={() => openWheel('picks', likedRestaurants)}
