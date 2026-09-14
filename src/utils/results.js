@@ -12,7 +12,7 @@ function parseKeywords(text) {
 }
 
 /**
- * True if the place's name or cuisine contains ANY keyword.
+ * True if the place's name, cuisine or kind ("ice cream", "bakery"…) contains ANY keyword.
  * Filtering happens here in the browser, NOT in the Overpass query,
  * so user-typed text never goes into a query language.
  *
@@ -23,7 +23,8 @@ export function matchesKeywords(place, keywordText) {
   const keywords = parseKeywords(keywordText)
   if (keywords.length === 0) return true
 
-  const searchable = `${place.name} ${place.cuisine ?? ''}`.toLowerCase()
+  const kind = place.category?.replaceAll('_', ' ') ?? '' // "ice_cream" -> "ice cream"
+  const searchable = `${place.name} ${place.cuisine ?? ''} ${kind}`.toLowerCase()
   return keywords.some((k) => searchable.includes(k))
 }
 

@@ -1,15 +1,17 @@
 // Quick moods = one tap fills in the filters for you.
 //
-// `placeTypes` are OpenStreetMap `amenity` values (what KIND of place).
+// `placeTypes` are the kinds of place to search (see PLACE_TYPES in api/places.js).
 // `keyword` goes into the Craving box, where the user can still edit it.
-// A place matches if its name OR cuisine contains ANY of the keywords.
+// A place matches if its name, cuisine OR kind contains ANY of the keywords.
+
+const ALL_FOOD = ['restaurant', 'cafe', 'fast_food', 'food_court', 'ice_cream', 'bakery', 'pastry', 'beverages']
 
 export const MOODS = [
   {
     id: 'anything',
     emoji: '🍜',
     label: 'Anything',
-    placeTypes: ['restaurant', 'cafe', 'fast_food', 'food_court'],
+    placeTypes: ALL_FOOD,
     keyword: '',
   },
   {
@@ -22,9 +24,9 @@ export const MOODS = [
   {
     id: 'dessert',
     emoji: '🍰',
-    label: 'Dessert',
-    placeTypes: ['cafe', 'ice_cream'],
-    keyword: 'dessert, ice cream, cake, bingsu, waffle, bubble tea, mixue, pastry',
+    label: 'Dessert & drinks',
+    placeTypes: ['cafe', 'ice_cream', 'bakery', 'pastry', 'beverages'],
+    keyword: 'dessert, ice cream, cake, bingsu, waffle, bubble tea, mixue, bakery, pastry, beverages',
   },
   {
     id: 'mamak',

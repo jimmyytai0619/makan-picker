@@ -15,8 +15,8 @@
  */
 
 /**
- * @typedef {'cafe'|'restaurant'|'fast_food'|'ice_cream'|'food_court'|'saved'} PlaceCategory
- * The OSM `amenity` tag, or 'saved' for cafes from the user's own list.
+ * @typedef {'cafe'|'restaurant'|'fast_food'|'ice_cream'|'food_court'|'bakery'|'pastry'|'beverages'|'saved'} PlaceCategory
+ * The OSM `amenity` or `shop` tag, or 'saved' for cafes from the user's own list.
  */
 
 /**
@@ -70,6 +70,7 @@
  * What the user picked on the Filter screen.
  *
  * @typedef {Object} SearchFilters
+ * @property {'swipe'|'roulette'} playStyle  swipe like Tinder, or spin a wheel of all places
  * @property {'nearby'|'saved'} source    search the map, or shuffle My Cafes
  * @property {ChosenLocation|null} location
  * @property {number} maxDistanceKm
@@ -80,6 +81,7 @@
 
 /** @type {SearchFilters} */
 export const DEFAULT_FILTERS = {
+  playStyle: 'swipe',
   source: 'nearby',
   location: null, // user must choose — no more fake Cheras default
   maxDistanceKm: 3,
