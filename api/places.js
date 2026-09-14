@@ -26,7 +26,19 @@ const ALLOWED_PLACE_TYPES = ['cafe', 'restaurant', 'fast_food', 'ice_cream', 'fo
 const MAX_RADIUS_KM = 10
 
 // Only these tags are sent back to the app (smaller download on mobile data).
-const KEPT_TAGS = ['name', 'amenity', 'cuisine', 'opening_hours']
+const KEPT_TAGS = [
+  'name',
+  'amenity',
+  'cuisine',
+  'opening_hours',
+  // Where the place is + how to contact it (each is only on some places)
+  'addr:housenumber',
+  'addr:street',
+  'addr:postcode',
+  'addr:city',
+  'phone',
+  'website',
+]
 
 /**
  * Checks the URL parameters. Anyone on the internet can call this endpoint,

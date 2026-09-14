@@ -3,7 +3,8 @@
 // If we ever switch to Google Places, only this file changes.
 //
 // Two sources:
-//   1. Nominatim — turns text ("Cheras") into coordinates ("geocoding").
+//   1. Nominatim — turns text ("Cheras") into coordinates ("geocoding"), and
+//      coordinates into the nearest road ("reverse geocoding").
 //      The browser calls it directly.
 //   2. Our own /api/places endpoint (api/places.js) — finds cafes and
 //      restaurants near coordinates. It asks the Overpass servers for us,
@@ -15,12 +16,43 @@
 //   - You MUST show "© OpenStreetMap contributors" in the app.
 
 import { distanceInKm } from '../utils/geo'
+import { formatOsmAddress, formatReverseAddress } from '../utils/address'
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
+const NOMINATIM_REVERSE_URL = 'https://nominatim.openstreetmap.org/reverse'
 const PLACES_API_URL = '/api/places' // same website, so no CORS problems
+
+// Bump this whenever api/places.js starts sending new data. It changes the URL,
+// so Vercel's CDN can't hand out an old cached answer that's missing it.
+const PLACES_API_VERSION = '2'
 
 // Our server tries 2 Overpass servers (12 s each), so wait a little longer than that.
 const PLACES_TIMEOUT_MS = 30000
+
+// ---------------------------------------------------------------------------
+// 0. A polite queue for Nominatim (max 1 request per second)
+// ---------------------------------------------------------------------------
+
+const NOMINATIM_GAP_MS = 1100
+let nominatimQueue = Promise.resolve()
+
+/**
+ * Runs `task` after every earlier Nominatim task has finished, plus a 1.1 s gap.
+ * So even if 5 cards ask for an address at once, the requests go out one by one.
+ *
+ * @template T
+ * @param {() => Promise<T>} task
+ * @returns {Promise<T>}
+ */
+function politely(task) {
+  const result = nominatimQueue.then(task)
+  // The NEXT task waits for this one + the gap. `.catch` so one failed
+  // request can't block the queue forever.
+  nominatimQueue = result
+    .catch(() => {})
+    .then(() => new Promise((resolve) => setTimeout(resolve, NOMINATIM_GAP_MS)))
+  return result
+}
 
 // ---------------------------------------------------------------------------
 // 1. Geocoding: text -> coordinates
@@ -43,7 +75,7 @@ export async function geocode(text) {
     'accept-language': 'en',
   })
 
-  const response = await fetch(`${NOMINATIM_URL}?${params}`)
+  const response = await politely(() => fetch(`${NOMINATIM_URL}?${params}`))
   if (!response.ok) {
     throw new Error(`Location search failed (error ${response.status}). Try again in a moment.`)
   }
@@ -73,7 +105,49 @@ function shortenLabel(displayName) {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Nearby places (through our own /api/places server endpoint)
+// 2. Reverse geocoding: coordinates -> nearest road ("Near Jalan Suarasa 8/5, Cheras")
+// ---------------------------------------------------------------------------
+
+// Answers are remembered as Promises, so two cards asking at once share one request.
+const reverseCache = new Map()
+
+/**
+ * The nearest road and area for a map point, e.g. "Jalan Suarasa 8/5, Town Park, Cheras".
+ * Never throws: it returns null if the lookup fails, so a card just shows no address.
+ *
+ * @param {number} lat
+ * @param {number} lng
+ * @returns {Promise<string | null>}
+ */
+export function reverseGeocode(lat, lng) {
+  const key = `${lat.toFixed(5)},${lng.toFixed(5)}`
+
+  if (!reverseCache.has(key)) {
+    const params = new URLSearchParams({
+      lat: String(lat),
+      lon: String(lng),
+      format: 'jsonv2',
+      zoom: '17', // street level
+      'accept-language': 'en',
+    })
+
+    const request = politely(() => fetch(`${NOMINATIM_REVERSE_URL}?${params}`))
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => formatReverseAddress(data?.address))
+      .catch(() => null)
+      .then((text) => {
+        if (text === null) reverseCache.delete(key) // allow a retry later
+        return text
+      })
+
+    reverseCache.set(key, request)
+  }
+
+  return reverseCache.get(key)
+}
+
+// ---------------------------------------------------------------------------
+// 3. Nearby places (through our own /api/places server endpoint)
 // ---------------------------------------------------------------------------
 
 /**
@@ -97,6 +171,9 @@ function toRestaurant(element, center) {
     lat,
     lng,
     distanceInKm: distanceInKm(center, { lat, lng }),
+    address: formatOsmAddress(tags), // only ~1 in 3 places have one
+    phone: tags.phone ?? null,
+    website: tags.website ?? null,
     rating: null,
     priceLevel: null,
     openingHours: tags.opening_hours ?? null,
@@ -124,6 +201,7 @@ export async function searchNearbyPlaces({ center, radiusKm, placeTypes }) {
     lng: center.lng.toFixed(3),
     radiusKm: String(radiusKm),
     types: placeTypes.join(','),
+    v: PLACES_API_VERSION,
   })
   const url = `${PLACES_API_URL}?${params}`
   if (cache.has(url)) return cache.get(url)
