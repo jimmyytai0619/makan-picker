@@ -21,14 +21,26 @@ const OVERPASS_SERVERS = [
 const USER_AGENT = 'MakanPicker/0.1 (+https://makan-picker.vercel.app)'
 const TIMEOUT_PER_SERVER_MS = 12000
 
-// Only these words can ever go into an Overpass query.
-const ALLOWED_PLACE_TYPES = ['cafe', 'restaurant', 'fast_food', 'ice_cream', 'food_court']
+// Only these words can ever go into an Overpass query. Each one lives under a
+// different OSM tag: restaurants are `amenity=…`, bakeries are `shop=…`.
+const PLACE_TYPES = {
+  restaurant: 'amenity',
+  cafe: 'amenity',
+  fast_food: 'amenity',
+  food_court: 'amenity',
+  ice_cream: 'amenity',
+  bakery: 'shop',
+  pastry: 'shop',
+  beverages: 'shop', // bubble tea & drinks shops
+}
+const ALLOWED_PLACE_TYPES = Object.keys(PLACE_TYPES)
 const MAX_RADIUS_KM = 10
 
 // Only these tags are sent back to the app (smaller download on mobile data).
 const KEPT_TAGS = [
   'name',
   'amenity',
+  'shop',
   'cuisine',
   'opening_hours',
   // Where the place is + how to contact it (each is only on some places)
@@ -63,11 +75,24 @@ function parseParams(searchParams) {
   return { lat, lng, radiusKm, types }
 }
 
-/** Overpass QL: "every named place of these types within X metres of this point". */
+/**
+ * Overpass QL: "every named place of these types within X metres of this point".
+ * Restaurants (amenity) and shops (shop) are different tags, so this can be two
+ * searches in one query. `( … ; … );` means "give me both, together".
+ */
 function buildQuery({ lat, lng, radiusKm, types }) {
-  const radiusMeters = Math.round(radiusKm * 1000)
+  const around = `(around:${Math.round(radiusKm * 1000)},${lat.toFixed(5)},${lng.toFixed(5)})`
+  const searches = ['amenity', 'shop']
+    .map((key) => {
+      const values = types.filter((type) => PLACE_TYPES[type] === key)
+      return values.length > 0 ? `nwr["${key}"~"^(${values.join('|')})$"]["name"]${around};` : null
+    })
+    .filter(Boolean)
+
   return `[out:json][timeout:25];
-nwr["amenity"~"^(${types.join('|')})$"]["name"](around:${radiusMeters},${lat.toFixed(5)},${lng.toFixed(5)});
+(
+${searches.join('\n')}
+);
 out center tags;`
 }
 

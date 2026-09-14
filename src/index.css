@@ -1,1 +1,66 @@
+/* Nunito: a rounded, bubbly font. Stored inside the app (no Google Fonts request). */
+@import "@fontsource-variable/nunito";
 @import "tailwindcss";
+
+/*
+ * Pastel candy theme.
+ * Every --color-* below becomes Tailwind classes: bg-candy-pink, text-plum, ring-candy-pink-soft…
+ * Every --animate-* becomes a class too: animate-float, animate-pop, animate-confetti.
+ */
+@theme {
+  --font-sans: "Nunito Variable", ui-rounded, system-ui, sans-serif;
+
+  --color-candy-pink: #ff6f9c;
+  --color-candy-pink-soft: #ffe0ea;
+  --color-candy-peach: #ffd8c2;
+  --color-candy-mint: #c9f2e1;
+  --color-candy-lilac: #e3d6ff;
+  --color-candy-butter: #fff1b8;
+  --color-candy-sky: #d3ecff;
+  --color-candy-blue: #5db4f5;
+  --color-plum: #4b3350;
+  --color-cream: #fff8f3;
+
+  --animate-float: float 3s ease-in-out infinite;
+  --animate-pop: pop 450ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-confetti: confetti 1.6s ease-out forwards;
+
+  /* gently bob up and down (the big emojis) */
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+
+  /* grow in with a little bounce (winner text, buttons) */
+  @keyframes pop {
+    0% {
+      transform: scale(0.6);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  /* fall and spin; each piece sets its own --dx and --rotate */
+  @keyframes confetti {
+    0% {
+      transform: translate(0, -24px) rotate(0deg);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(var(--dx), 420px) rotate(var(--rotate));
+      opacity: 0;
+    }
+  }
+}
+
+body {
+  background-color: var(--color-cream);
+}

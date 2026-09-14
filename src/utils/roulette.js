@@ -1,4 +1,4 @@
-// The maths behind the casino wheel. It's kept apart from the drawing code
+// The maths behind the roulette wheel. It's kept apart from the drawing code
 // so it can be tested: the wheel must stop on the SAME place the code picked.
 //
 // Pockets are numbered clockwise, starting at the top (12 o'clock).
@@ -40,15 +40,42 @@ export function pocketAtRotation(rotation, count) {
   return Math.floor(mod360(-rotation) / pocketAngle(count)) % count
 }
 
+/** The pastel pocket colours, in order around the wheel. */
+export const POCKET_COLORS = ['pink', 'mint', 'lilac', 'butter', 'peach', 'sky']
+
 /**
- * Casino colours: red and black take turns. With an odd number of pockets the
- * last one would put two reds side by side, so it's green (like the casino 0).
+ * Pastel colours take turns around the wheel. A wheel is a circle, so the LAST
+ * pocket also touches the FIRST one: if both would be pink, the last one is
+ * butter yellow instead, so two neighbours never share a colour.
  *
- * @returns {'red'|'black'|'green'}
+ * @returns {'pink'|'mint'|'lilac'|'butter'|'peach'|'sky'}
  */
 export function pocketColor(index, count) {
-  if (count > 1 && count % 2 === 1 && index === count - 1) return 'green'
-  return index % 2 === 0 ? 'red' : 'black'
+  const color = POCKET_COLORS[index % POCKET_COLORS.length]
+  const isLast = count > 1 && index === count - 1
+  return isLast && color === POCKET_COLORS[0] ? 'butter' : color
+}
+
+// A wheel with 200 pockets can't be read, so it shows at most this many places.
+export const WHEEL_MAX = 12
+
+/**
+ * Up to `max` random places for the wheel — a fresh set every time.
+ * (Fisher–Yates shuffle, then keep the first `max`.)
+ *
+ * @template T
+ * @param {T[]} places
+ * @param {number} [max]
+ * @param {() => number} [random]  a fake one can be passed in tests
+ * @returns {T[]}
+ */
+export function pickForWheel(places, max = WHEEL_MAX, random = Math.random) {
+  const copy = [...places]
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1))
+    ;[copy[i], copy[j]] = [copy[j], copy[i]]
+  }
+  return copy.slice(0, max)
 }
 
 /** "Brew & Boulder Café (near Batuu)" -> "Brew & Boulder…" so it fits in a pocket. */

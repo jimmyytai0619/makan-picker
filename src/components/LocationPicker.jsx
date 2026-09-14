@@ -57,9 +57,13 @@ export default function LocationPicker({ value, onChange }) {
   // --- A location is already chosen: show it with a "Change" button ---
   if (value) {
     return (
-      <div className="flex items-center justify-between gap-3 rounded-xl bg-orange-50 p-3">
-        <span className="font-medium">📍 {value.label}</span>
-        <button type="button" onClick={() => onChange(null)} className="shrink-0 text-sm text-orange-600 underline">
+      <div className="flex items-center justify-between gap-3 rounded-2xl bg-candy-pink-soft/60 p-3">
+        <span className="font-bold text-plum">📍 {value.label}</span>
+        <button
+          type="button"
+          onClick={() => onChange(null)}
+          className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-extrabold text-candy-pink shadow-sm"
+        >
           Change
         </button>
       </div>
@@ -82,13 +86,13 @@ export default function LocationPicker({ value, onChange }) {
               handleSearch()
             }
           }}
-          className="min-w-0 flex-1 rounded-xl border border-gray-300 p-3"
+          className="min-w-0 flex-1 rounded-2xl border-0 bg-cream px-4 py-3 font-semibold text-plum ring-1 ring-candy-pink-soft placeholder:font-normal placeholder:text-plum/40 focus:outline-none focus:ring-2 focus:ring-candy-pink"
         />
         <button
           type="button"
           onClick={handleSearch}
           disabled={isLoading || !query.trim()}
-          className="rounded-xl bg-gray-900 px-4 font-semibold text-white disabled:opacity-40"
+          className="rounded-2xl bg-plum px-4 font-extrabold text-white transition active:scale-95 disabled:opacity-40"
         >
           {isLoading ? '…' : 'Search'}
         </button>
@@ -98,18 +102,22 @@ export default function LocationPicker({ value, onChange }) {
         type="button"
         onClick={handleUseGps}
         disabled={isLoading}
-        className="self-start text-sm text-orange-600 underline disabled:opacity-40"
+        className="self-start rounded-full bg-candy-mint px-3 py-1.5 text-xs font-extrabold text-emerald-800 transition active:scale-95 disabled:opacity-40"
       >
         📍 Use my current location
       </button>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm font-semibold text-rose-500">{error}</p>}
 
       {results.length > 0 && (
-        <ul className="divide-y overflow-hidden rounded-xl border border-gray-200">
+        <ul className="divide-y divide-candy-pink-soft overflow-hidden rounded-2xl bg-white ring-1 ring-candy-pink-soft">
           {results.map((r) => (
             <li key={`${r.lat},${r.lng}`}>
-              <button type="button" onClick={() => handlePick(r)} className="w-full p-3 text-left hover:bg-orange-50">
+              <button
+                type="button"
+                onClick={() => handlePick(r)}
+                className="w-full px-4 py-3 text-left font-semibold text-plum hover:bg-candy-pink-soft/60"
+              >
                 {r.label}
               </button>
             </li>

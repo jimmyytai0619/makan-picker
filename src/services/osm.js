@@ -165,7 +165,7 @@ function toRestaurant(element, center) {
   return {
     id: `osm-${element.type}-${element.id}`,
     name: tags.name,
-    category: tags.amenity,
+    category: tags.amenity ?? tags.shop, // e.g. "cafe", or "bakery" for shops
     // OSM writes "tea;coffee_shop" -> we show "tea, coffee shop"
     cuisine: tags.cuisine ? tags.cuisine.replaceAll(';', ', ').replaceAll('_', ' ') : null,
     lat,

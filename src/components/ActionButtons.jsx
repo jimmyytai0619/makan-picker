@@ -1,22 +1,18 @@
 /**
- * The ✕ / ♥ buttons under the card. It doesn't know WHAT skip/like do —
+ * The ✕ / ♥ buttons under the swipe card. It doesn't know WHAT skip/like do —
  * the parent passes those functions in. That keeps this reusable.
  *
  * @param {{ onSkip: () => void, onLike: () => void, disabled?: boolean }} props
  */
 export default function ActionButtons({ onSkip, onLike, disabled = false }) {
-  const base =
-    'flex h-16 w-16 items-center justify-center rounded-full text-3xl shadow-md ' +
-    'transition active:scale-90 disabled:opacity-40'
-
   return (
-    <div className="flex justify-center gap-10">
+    <div className="flex items-center justify-center gap-8">
       <button
         type="button"
         aria-label="Skip"
         onClick={onSkip}
         disabled={disabled}
-        className={`${base} bg-white text-gray-500`}
+        className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-3xl font-black text-slate-400 shadow-lg ring-1 ring-slate-100 transition hover:scale-105 active:scale-90 disabled:opacity-40"
       >
         ✕
       </button>
@@ -25,7 +21,7 @@ export default function ActionButtons({ onSkip, onLike, disabled = false }) {
         aria-label="Like"
         onClick={onLike}
         disabled={disabled}
-        className={`${base} bg-orange-500 text-white`}
+        className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-candy-pink to-[#ffa3c0] text-4xl text-white shadow-xl shadow-candy-pink/40 transition hover:scale-105 active:scale-90 disabled:opacity-40"
       >
         ♥
       </button>

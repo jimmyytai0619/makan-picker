@@ -1,27 +1,17 @@
 import { formatPriceLevel } from '../models'
 import { usePlaceAddress } from '../hooks/usePlaceAddress'
 import { googleMapsPlaceUrl, phoneLink, safeWebsiteUrl } from '../utils/address'
+import { categoryStyle } from '../data/categories'
+import { formatDistance } from '../utils/format'
 
-// OSM has no photos, so each category gets an emoji + colour instead.
-const CATEGORY_STYLE = {
-  cafe: { emoji: '☕', bg: 'from-amber-200 to-orange-300' },
-  restaurant: { emoji: '🍛', bg: 'from-orange-200 to-red-300' },
-  fast_food: { emoji: '🍔', bg: 'from-yellow-200 to-red-300' },
-  ice_cream: { emoji: '🍦', bg: 'from-pink-200 to-rose-300' },
-  food_court: { emoji: '🍜', bg: 'from-lime-200 to-green-300' },
-  saved: { emoji: '❤️', bg: 'from-rose-200 to-pink-300' },
-}
+const PLATFORM_LABELS = { instagram: 'Instagram', xhs: 'XHS', other: 'saved' }
 
-const PLATFORM_LABELS = { instagram: 'Instagram', xhs: 'XHS', other: 'link' }
-
-/** 0.04 -> "40 m", 1.26 -> "1.3 km" */
-function formatDistance(km) {
-  return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`
-}
+const chip = 'rounded-full px-3 py-1 text-xs font-extrabold'
+const linkPill = 'inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-extrabold transition active:scale-95'
 
 /**
- * Shows one restaurant: picture (or emoji), name, where it is, and links.
- * Every field except name can be null, so each part checks first.
+ * Shows one place: a big emoji on a pastel background, the name, where it is,
+ * little info chips and link pills. Every field except name can be missing.
  *
  * @param {{ restaurant: import('../models').Restaurant }} props
  */
@@ -42,7 +32,7 @@ export default function RestaurantCard({ restaurant }) {
     phone,
     website,
   } = restaurant
-  const style = CATEGORY_STYLE[category] ?? CATEGORY_STYLE.restaurant
+  const style = categoryStyle(category)
 
   // Real address from OSM, or the nearest road looked up from the map point.
   const placeAddress = usePlaceAddress(restaurant)
@@ -50,83 +40,70 @@ export default function RestaurantCard({ restaurant }) {
   const websiteLink = safeWebsiteUrl(website)
 
   return (
-    <article className="overflow-hidden rounded-3xl bg-white shadow-lg">
+    <article className="overflow-hidden rounded-[2rem] bg-white shadow-xl shadow-candy-pink/15 ring-1 ring-candy-pink-soft">
       {photoUrl ? (
         <img src={photoUrl} alt={name} className="aspect-video w-full bg-gray-200 object-cover" />
       ) : (
-        <div className={`flex aspect-video w-full items-center justify-center bg-gradient-to-br text-7xl ${style.bg}`}>
-          {style.emoji}
+        <div className={`relative flex aspect-[16/10] w-full items-center justify-center bg-gradient-to-br ${style.bg}`}>
+          <span className="animate-float text-8xl drop-shadow-sm motion-reduce:animate-none" aria-hidden="true">
+            {style.emoji}
+          </span>
+          <span className={`absolute bottom-3 left-3 ${chip} bg-white/80 text-plum/70`}>{style.label}</span>
+          {isSaved && <span className={`absolute bottom-3 right-3 ${chip} bg-white/90 text-candy-pink`}>💖 In your list</span>}
         </div>
       )}
 
       <div className="space-y-3 p-5">
         <div className="space-y-1">
-          <h2 className="text-xl font-bold leading-tight">{name}</h2>
+          <h2 className="text-2xl font-black leading-tight text-plum">{name}</h2>
           {placeAddress.status === 'ready' && (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm font-semibold text-plum/60">
               📍 {placeAddress.isApproximate ? 'Near ' : ''}
               {placeAddress.text}
             </p>
           )}
-          {placeAddress.status === 'loading' && <p className="text-sm text-gray-400">📍 Finding address…</p>}
+          {placeAddress.status === 'loading' && <p className="text-sm font-semibold text-plum/35">📍 Finding address…</p>}
         </div>
 
-        <div className="flex flex-wrap gap-2 text-sm">
-          {openStatus === 'open' && (
-            <span className="rounded-full bg-emerald-100 px-3 py-1 font-medium text-emerald-800">🟢 Open now</span>
-          )}
-          {openStatus === 'closed' && (
-            <span className="rounded-full bg-gray-200 px-3 py-1 font-medium text-gray-700">🔴 Closed now</span>
-          )}
-          {isSaved && (
-            <span className="rounded-full bg-rose-100 px-3 py-1 font-medium text-rose-800">❤️ In your list</span>
-          )}
+        <div className="flex flex-wrap gap-2">
+          {openStatus === 'open' && <span className={`${chip} bg-candy-mint text-emerald-800`}>🟢 Open now</span>}
+          {openStatus === 'closed' && <span className={`${chip} bg-slate-100 text-slate-500`}>🌙 Closed now</span>}
           {/* `!= null` catches both null and undefined, but NOT 0 */}
           {distanceInKm != null && (
-            <span className="rounded-full bg-blue-100 px-3 py-1 font-medium text-blue-800">
-              🧭 {formatDistance(distanceInKm)}
-            </span>
+            <span className={`${chip} bg-candy-sky text-sky-900`}>🧭 {formatDistance(distanceInKm)}</span>
           )}
-          {cuisine && (
-            <span className="rounded-full bg-purple-100 px-3 py-1 font-medium text-purple-800">🍽️ {cuisine}</span>
-          )}
-          {rating != null && (
-            <span className="rounded-full bg-yellow-100 px-3 py-1 font-medium text-yellow-800">
-              ⭐ {rating.toFixed(1)}
-            </span>
-          )}
+          {cuisine && <span className={`${chip} bg-candy-lilac text-violet-900`}>🍽️ {cuisine}</span>}
+          {rating != null && <span className={`${chip} bg-candy-butter text-amber-900`}>⭐ {rating.toFixed(1)}</span>}
           {priceLevel != null && (
-            <span className="rounded-full bg-green-100 px-3 py-1 font-medium text-green-800">
-              {formatPriceLevel(priceLevel)}
-            </span>
+            <span className={`${chip} bg-candy-mint text-emerald-800`}>{formatPriceLevel(priceLevel)}</span>
           )}
         </div>
 
-        {openingHours && <p className="text-sm text-gray-500">🕒 {openingHours}</p>}
+        {openingHours && <p className="text-xs font-semibold text-plum/45">🕒 {openingHours}</p>}
 
-        {/* Links: Google has the photos and reviews that OpenStreetMap doesn't */}
-        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+        {/* Link pills: Google has the photos and reviews that OpenStreetMap doesn't */}
+        <div className="flex flex-wrap gap-2">
           <a
             href={googleMapsPlaceUrl(restaurant)}
             target="_blank"
             rel="noreferrer"
-            className="font-medium text-orange-600 underline"
+            className={`${linkPill} bg-candy-pink-soft text-candy-pink`}
           >
-            📷 Photos & reviews on Google ↗
+            📷 Photos & reviews
           </a>
           {callLink && (
-            <a href={callLink} className="text-gray-600 underline">
+            <a href={callLink} className={`${linkPill} bg-candy-mint text-emerald-800`}>
               📞 Call
             </a>
           )}
           {websiteLink && (
-            <a href={websiteLink} target="_blank" rel="noreferrer" className="text-gray-600 underline">
+            <a href={websiteLink} target="_blank" rel="noreferrer" className={`${linkPill} bg-candy-sky text-sky-900`}>
               🌐 Website
             </a>
           )}
           {sourceUrl && (
-            <a href={sourceUrl} target="_blank" rel="noreferrer" className="text-gray-600 underline">
-              View your saved {PLATFORM_LABELS[savedFrom] ?? 'link'} post ↗
+            <a href={sourceUrl} target="_blank" rel="noreferrer" className={`${linkPill} bg-candy-lilac text-violet-900`}>
+              📌 My {PLATFORM_LABELS[savedFrom] ?? 'saved'} post
             </a>
           )}
         </div>

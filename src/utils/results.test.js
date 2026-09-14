@@ -47,6 +47,14 @@ describe('matchesKeywords', () => {
   it('does not match when no keyword fits', () => {
     expect(matchesKeywords(nasiKandar, 'sushi, pizza')).toBe(false)
   })
+
+  it('matches the kind of place too, so "ice cream" finds an ice_cream shop with any name', () => {
+    const iceCreamShop = { ...place('Sweet Scoops', 1), category: 'ice_cream' }
+    const bakery = { ...place('Lavender', 1), category: 'bakery' }
+    expect(matchesKeywords(iceCreamShop, 'ice cream')).toBe(true)
+    expect(matchesKeywords(bakery, 'dessert, bakery')).toBe(true)
+    expect(matchesKeywords(bakery, 'ice cream')).toBe(false)
+  })
 })
 
 describe('shuffle', () => {
