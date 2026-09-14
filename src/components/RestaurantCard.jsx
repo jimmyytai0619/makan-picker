@@ -1,4 +1,6 @@
 import { formatPriceLevel } from '../models'
+import { usePlaceAddress } from '../hooks/usePlaceAddress'
+import { googleMapsPlaceUrl, phoneLink, safeWebsiteUrl } from '../utils/address'
 
 // OSM has no photos, so each category gets an emoji + colour instead.
 const CATEGORY_STYLE = {
@@ -18,15 +20,34 @@ function formatDistance(km) {
 }
 
 /**
- * Pure "display" component: gets a restaurant, draws it.
- * Every field except name can be null now, so each pill checks first.
+ * Shows one restaurant: picture (or emoji), name, where it is, and links.
+ * Every field except name can be null, so each part checks first.
  *
  * @param {{ restaurant: import('../models').Restaurant }} props
  */
 export default function RestaurantCard({ restaurant }) {
-  const { name, category, cuisine, photoUrl, rating, distanceInKm, priceLevel, openingHours, openStatus, isSaved, sourceUrl, savedFrom } =
-    restaurant
+  const {
+    name,
+    category,
+    cuisine,
+    photoUrl,
+    rating,
+    distanceInKm,
+    priceLevel,
+    openingHours,
+    openStatus,
+    isSaved,
+    sourceUrl,
+    savedFrom,
+    phone,
+    website,
+  } = restaurant
   const style = CATEGORY_STYLE[category] ?? CATEGORY_STYLE.restaurant
+
+  // Real address from OSM, or the nearest road looked up from the map point.
+  const placeAddress = usePlaceAddress(restaurant)
+  const callLink = phoneLink(phone)
+  const websiteLink = safeWebsiteUrl(website)
 
   return (
     <article className="overflow-hidden rounded-3xl bg-white shadow-lg">
@@ -39,7 +60,16 @@ export default function RestaurantCard({ restaurant }) {
       )}
 
       <div className="space-y-3 p-5">
-        <h2 className="text-xl font-bold leading-tight">{name}</h2>
+        <div className="space-y-1">
+          <h2 className="text-xl font-bold leading-tight">{name}</h2>
+          {placeAddress.status === 'ready' && (
+            <p className="text-sm text-gray-600">
+              📍 {placeAddress.isApproximate ? 'Near ' : ''}
+              {placeAddress.text}
+            </p>
+          )}
+          {placeAddress.status === 'loading' && <p className="text-sm text-gray-400">📍 Finding address…</p>}
+        </div>
 
         <div className="flex flex-wrap gap-2 text-sm">
           {openStatus === 'open' && (
@@ -54,7 +84,7 @@ export default function RestaurantCard({ restaurant }) {
           {/* `!= null` catches both null and undefined, but NOT 0 */}
           {distanceInKm != null && (
             <span className="rounded-full bg-blue-100 px-3 py-1 font-medium text-blue-800">
-              📍 {formatDistance(distanceInKm)}
+              🧭 {formatDistance(distanceInKm)}
             </span>
           )}
           {cuisine && (
@@ -74,11 +104,32 @@ export default function RestaurantCard({ restaurant }) {
 
         {openingHours && <p className="text-sm text-gray-500">🕒 {openingHours}</p>}
 
-        {sourceUrl && (
-          <a href={sourceUrl} target="_blank" rel="noreferrer" className="inline-block text-sm text-orange-600 underline">
-            View your saved {PLATFORM_LABELS[savedFrom] ?? 'link'} post ↗
+        {/* Links: Google has the photos and reviews that OpenStreetMap doesn't */}
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+          <a
+            href={googleMapsPlaceUrl(restaurant)}
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium text-orange-600 underline"
+          >
+            📷 Photos & reviews on Google ↗
           </a>
-        )}
+          {callLink && (
+            <a href={callLink} className="text-gray-600 underline">
+              📞 Call
+            </a>
+          )}
+          {websiteLink && (
+            <a href={websiteLink} target="_blank" rel="noreferrer" className="text-gray-600 underline">
+              🌐 Website
+            </a>
+          )}
+          {sourceUrl && (
+            <a href={sourceUrl} target="_blank" rel="noreferrer" className="text-gray-600 underline">
+              View your saved {PLATFORM_LABELS[savedFrom] ?? 'link'} post ↗
+            </a>
+          )}
+        </div>
       </div>
     </article>
   )

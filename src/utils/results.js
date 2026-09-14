@@ -87,6 +87,9 @@ export function savedCafeToRestaurant(cafe) {
     lat: null,
     lng: null,
     distanceInKm: null,
+    address: null, // saved cafes only have a name; the Google link searches it
+    phone: null,
+    website: null,
     rating: null,
     priceLevel: null,
     openingHours: null,
