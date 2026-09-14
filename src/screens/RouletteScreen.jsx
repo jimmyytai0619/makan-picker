@@ -87,7 +87,9 @@ export default function RouletteScreen({ candidates, onPicked, onBack }) {
     timerRef.current = setTimeout(() => {
       setIsSpinning(false)
       setWinnerIndex(pick)
-      navigator.vibrate?.(60) // small buzz on Android phones (iPhones ignore it)
+      // Small buzz on Android phones (iPhones ignore it). Browsers only allow it
+      // after a real tap on the page, so check first to avoid a console error.
+      if (navigator.userActivation?.hasBeenActive) navigator.vibrate?.(60)
     }, duration)
   }
 
