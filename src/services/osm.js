@@ -189,6 +189,26 @@ function toRestaurant(element, center) {
 // with the same filters doesn't ask the server twice.
 const cache = new Map()
 
+// The free map servers are sometimes slow for a few seconds. Our server then
+// answers "busy" (502/503/504), and a second try a moment later usually works.
+const BUSY_STATUSES = [502, 503, 504]
+const RETRY_DELAY_MS = 1500
+
+/** One request to /api/places, with friendly errors when no answer arrives at all. */
+async function fetchPlaces(url) {
+  try {
+    return await fetch(url, { signal: AbortSignal.timeout(PLACES_TIMEOUT_MS) })
+  } catch (err) {
+    // fetch() only THROWS when no answer arrived at all: no internet, or our timeout.
+    // Without this, users would see the browser's raw "Failed to fetch".
+    throw new Error(
+      err.name === 'TimeoutError'
+        ? 'The search took too long. Please try again.'
+        : "Couldn't reach the server. Check your internet connection and try again.",
+    )
+  }
+}
+
 /**
  * @param {{ center: import('../models').LatLng, radiusKm: number, placeTypes: string[] }} options
  * @returns {Promise<import('../models').Restaurant[]>} sorted nearest first
@@ -206,17 +226,11 @@ export async function searchNearbyPlaces({ center, radiusKm, placeTypes }) {
   const url = `${PLACES_API_URL}?${params}`
   if (cache.has(url)) return cache.get(url)
 
-  let response
-  try {
-    response = await fetch(url, { signal: AbortSignal.timeout(PLACES_TIMEOUT_MS) })
-  } catch (err) {
-    // fetch() only THROWS when no answer arrived at all: no internet, or our timeout.
-    // Without this, users would see the browser's raw "Failed to fetch".
-    throw new Error(
-      err.name === 'TimeoutError'
-        ? 'The search took too long. Please try again.'
-        : "Couldn't reach the server. Check your internet connection and try again.",
-    )
+  let response = await fetchPlaces(url)
+  if (BUSY_STATUSES.includes(response.status)) {
+    // Busy: wait a moment and try ONE more time (never an endless loop).
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS))
+    response = await fetchPlaces(url)
   }
 
   // Our server sends { error: "..." } with a friendly message when something fails.
