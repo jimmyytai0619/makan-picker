@@ -69,16 +69,3 @@ export function safeWebsiteUrl(website) {
   if (!url.includes(':') && /^[\w-]+(\.[\w-]+)+/.test(url)) return `https://${url}`
   return null
 }
-
-/**
- * A tap-to-call link. OSM may list several numbers ("…; …"), so use the first.
- *   "+60 3-9101 2345; +60 12-345 6789" -> "tel:+60391012345"
- *
- * @param {string | null | undefined} phone
- * @returns {string | null}
- */
-export function phoneLink(phone) {
-  if (!phone) return null
-  const digits = phone.split(';')[0].replace(/[^\d+]/g, '')
-  return digits.length >= 6 ? `tel:${digits}` : null
-}

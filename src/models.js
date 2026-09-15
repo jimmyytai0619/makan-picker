@@ -35,7 +35,6 @@
  * @property {number|null} lng
  * @property {number|null} distanceInKm  straight-line distance from the search point
  * @property {string|null} address       e.g. "21 Jalan 33/154, 56000 Kuala Lumpur" (OSM, ~1 in 3 places)
- * @property {string|null} phone         raw OSM text, e.g. "+60 3-9101 2345"
  * @property {string|null} website       raw OSM text; only shown if it's a safe http(s) link
  * @property {number|null} rating        always null with OSM — kept for a future data source
  * @property {1|2|3|4|null} priceLevel   always null with OSM — kept for a future data source

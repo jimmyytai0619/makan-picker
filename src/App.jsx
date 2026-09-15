@@ -5,11 +5,12 @@ import PicksScreen from './screens/PicksScreen'
 import RouletteScreen from './screens/RouletteScreen'
 import ResultScreen from './screens/ResultScreen'
 import SavedScreen from './screens/SavedScreen'
+import RemovedScreen from './screens/RemovedScreen'
 import { DEFAULT_FILTERS } from './models'
 import { ALL_PLACE_TYPES } from './data/placeTypes'
 import { searchNearbyPlaces } from './services/osm'
 import { useSavedCafes } from './hooks/useSavedCafes'
-import { useHiddenPlaces } from './hooks/useHiddenPlaces'
+import { useRemovedPlaces } from './hooks/useRemovedPlaces'
 import { addOpenStatus } from './utils/openingHours'
 import { markSavedPlaces, matchesKeywords, savedCafeToRestaurant, shuffle } from './utils/results'
 import { addLike } from './utils/likes'
@@ -23,6 +24,7 @@ const SCREENS = {
   PICKS: 'picks',
   ROULETTE: 'roulette',
   RESULT: 'result',
+  REMOVED: 'removed',
 }
 
 // Only a safety limit. (It used to be 25, which hid most places: near Bandar Tun
@@ -48,15 +50,15 @@ export default function App() {
   const [isSearching, setIsSearching] = useState(false)
   const [searchError, setSearchError] = useState(null)
 
-  // Custom hooks: lists saved in the browser (localStorage).
+  // Custom hooks: My Cafes (this phone) and the places removed because they closed
+  // down (shared by everyone once the database is connected — see useRemovedPlaces).
   const { cafes: savedCafes, addCafes, removeCafe } = useSavedCafes()
-  const { hiddenIds, hidePlace, unhideAll } = useHiddenPlaces()
+  const { removed, isShared, removePlace, restorePlace } = useRemovedPlaces()
 
-  // Derived: the results without the places the user hid ("closed down").
-  // Hiding the current card removes it from this list, so the next card slides
-  // into the same position — swipeIndex doesn't need to change.
-  const hiddenSet = new Set(hiddenIds)
-  const visibleResults = results.filter((place) => !hiddenSet.has(place.id))
+  // Derived: the results without removed places. Removing the current card takes it
+  // out of this list, so the next card slides into the same position.
+  const removedIds = new Set(removed.map((entry) => entry.id))
+  const visibleResults = results.filter((place) => !removedIds.has(place.id))
 
   // --- Event handlers ---
 
@@ -96,7 +98,7 @@ export default function App() {
       const found = (await findPlaces(newFilters)).slice(0, MAX_PLACES)
       setResults(found)
       if (newFilters.playStyle === 'roulette') {
-        openWheel('all', found.filter((place) => !hiddenSet.has(place.id)))
+        openWheel('all', found.filter((place) => !removedIds.has(place.id)))
       } else {
         setScreen(SCREENS.SWIPE)
       }
@@ -117,8 +119,8 @@ export default function App() {
     setLikedRestaurants((prev) => prev.filter((r) => r.id !== restaurant.id))
   }
 
-  function handleHide(restaurant) {
-    hidePlace(restaurant.id)
+  function handleRemovePlace(restaurant) {
+    removePlace(restaurant)
     handleRemovePick(restaurant) // a closed place can't be one of your picks either
   }
 
@@ -155,11 +157,11 @@ export default function App() {
           <FilterScreen
             initialFilters={filters}
             savedCount={savedCafes.length}
-            hiddenCount={hiddenIds.length}
+            removedCount={removed.length}
             isSearching={isSearching}
             error={searchError}
             onSearch={handleSearch}
-            onUnhideAll={unhideAll}
+            onShowRemoved={() => setScreen(SCREENS.REMOVED)}
           />
         )
 
@@ -172,10 +174,12 @@ export default function App() {
             restaurants={visibleResults}
             currentIndex={swipeIndex}
             likedCount={likedRestaurants.length}
+            isShared={isShared}
             onLike={handleLike}
             onNext={() => setSwipeIndex((i) => i + 1)}
-            onHide={handleHide}
+            onRemove={handleRemovePlace}
             onShowPicks={() => setScreen(SCREENS.PICKS)}
+            onSpinPicks={() => openWheel('picks', likedRestaurants)}
             onBack={() => setScreen(SCREENS.FILTER)}
           />
         )
@@ -210,6 +214,16 @@ export default function App() {
             restaurant={chosenRestaurant}
             onBack={() => setScreen(resultBackTo)}
             onStartOver={handleStartOver}
+          />
+        )
+
+      case SCREENS.REMOVED:
+        return (
+          <RemovedScreen
+            removed={removed}
+            isShared={isShared}
+            onRestore={restorePlace}
+            onBack={() => setScreen(SCREENS.FILTER)}
           />
         )
 
