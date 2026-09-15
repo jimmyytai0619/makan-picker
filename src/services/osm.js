@@ -172,7 +172,6 @@ function toRestaurant(element, center) {
     lng,
     distanceInKm: distanceInKm(center, { lat, lng }),
     address: formatOsmAddress(tags), // only ~1 in 3 places have one
-    phone: tags.phone ?? null,
     website: tags.website ?? null,
     rating: null,
     priceLevel: null,

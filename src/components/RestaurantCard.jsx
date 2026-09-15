@@ -1,6 +1,6 @@
 import { formatPriceLevel } from '../models'
 import { usePlaceAddress } from '../hooks/usePlaceAddress'
-import { googleMapsPlaceUrl, phoneLink, safeWebsiteUrl } from '../utils/address'
+import { googleMapsPlaceUrl, safeWebsiteUrl } from '../utils/address'
 import { categoryStyle } from '../data/categories'
 import { formatDistance } from '../utils/format'
 
@@ -29,14 +29,12 @@ export default function RestaurantCard({ restaurant }) {
     isSaved,
     sourceUrl,
     savedFrom,
-    phone,
     website,
   } = restaurant
   const style = categoryStyle(category)
 
   // Real address from OSM, or the nearest road looked up from the map point.
   const placeAddress = usePlaceAddress(restaurant)
-  const callLink = phoneLink(phone)
   const websiteLink = safeWebsiteUrl(website)
 
   return (
@@ -91,11 +89,6 @@ export default function RestaurantCard({ restaurant }) {
           >
             📷 Photos & reviews
           </a>
-          {callLink && (
-            <a href={callLink} className={`${linkPill} bg-candy-mint text-emerald-800`}>
-              📞 Call
-            </a>
-          )}
           {websiteLink && (
             <a href={websiteLink} target="_blank" rel="noreferrer" className={`${linkPill} bg-candy-sky text-sky-900`}>
               🌐 Website

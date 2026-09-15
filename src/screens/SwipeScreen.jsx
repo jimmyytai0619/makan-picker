@@ -1,24 +1,41 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import RestaurantCard from '../components/RestaurantCard'
 import SwipeableCard from '../components/SwipeableCard'
 import ActionButtons from '../components/ActionButtons'
+import PicksPrompt from '../components/PicksPrompt'
+
+const pillButton = 'rounded-full px-4 py-2 text-sm font-black transition active:scale-95'
 
 /**
  * Tinder-style: swipe right (or ♥) for yum, left (or ✕) for nope.
  * On a laptop, the ← and → arrow keys work too.
+ * After the 2nd yum, a pop-up asks: spin the wheel, see the list, or keep swiping.
  *
  * @param {{
  *   restaurants: import('../models').Restaurant[],
  *   currentIndex: number,
  *   likedCount: number,
+ *   isShared: boolean,
  *   onLike: (r: import('../models').Restaurant) => void,
  *   onNext: () => void,
- *   onHide: (r: import('../models').Restaurant) => void,
+ *   onRemove: (r: import('../models').Restaurant) => void,
  *   onShowPicks: () => void,
+ *   onSpinPicks: () => void,
  *   onBack: () => void,
  * }} props
  */
-export default function SwipeScreen({ restaurants, currentIndex, likedCount, onLike, onNext, onHide, onShowPicks, onBack }) {
+export default function SwipeScreen({
+  restaurants,
+  currentIndex,
+  likedCount,
+  isShared,
+  onLike,
+  onNext,
+  onRemove,
+  onShowPicks,
+  onSpinPicks,
+  onBack,
+}) {
   // The card position (currentIndex) lives in App, not here, so it survives
   // leaving this screen (e.g. peeking at your picks and coming back).
   const current = restaurants[currentIndex] // undefined once we run out
@@ -27,6 +44,15 @@ export default function SwipeScreen({ restaurants, currentIndex, likedCount, onL
 
   // Set when ✕ / ♥ / an arrow key is pressed: the card then flies away by itself.
   const [exit, setExit] = useState(null)
+  const [showPrompt, setShowPrompt] = useState(false)
+
+  // Pop up once, at the moment the likes go from 1 to 2.
+  // (useRef remembers the previous count between renders without re-rendering.)
+  const previousLikes = useRef(likedCount)
+  useEffect(() => {
+    if (previousLikes.current < 2 && likedCount >= 2) setShowPrompt(true)
+    previousLikes.current = likedCount
+  }, [likedCount])
 
   function handleSwiped(direction) {
     if (direction === 'right') onLike(current)
@@ -34,9 +60,9 @@ export default function SwipeScreen({ restaurants, currentIndex, likedCount, onL
     onNext()
   }
 
-  // Keyboard: ← nope, → yum
+  // Keyboard: ← nope, → yum (not while the pop-up is open)
   useEffect(() => {
-    if (isDone) return undefined
+    if (isDone || showPrompt) return undefined
     function handleKey(event) {
       if (exit) return
       if (event.key === 'ArrowRight') setExit('right')
@@ -44,7 +70,7 @@ export default function SwipeScreen({ restaurants, currentIndex, likedCount, onL
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey) // cleanup when leaving
-  }, [isDone, exit])
+  }, [isDone, exit, showPrompt])
 
   // --- Case 1: filters matched nothing ---
   if (restaurants.length === 0) {
@@ -72,9 +98,14 @@ export default function SwipeScreen({ restaurants, currentIndex, likedCount, onL
         <p className="text-plum/60">
           You liked <strong className="text-candy-pink">{likedCount}</strong> of {restaurants.length} places.
         </p>
+        {likedCount >= 2 && (
+          <button onClick={onSpinPicks} className="rounded-full bg-candy-pink px-6 py-3 font-black text-white shadow-lg shadow-candy-pink/30">
+            🎡 Spin to choose
+          </button>
+        )}
         {likedCount > 0 ? (
-          <button onClick={onShowPicks} className="rounded-full bg-candy-pink px-6 py-3 font-black text-white shadow-lg shadow-candy-pink/30">
-            See my picks 💖
+          <button onClick={onShowPicks} className="rounded-full bg-candy-pink-soft px-6 py-3 font-black text-candy-pink">
+            📋 See my list
           </button>
         ) : (
           <button onClick={onBack} className="rounded-full bg-candy-pink px-6 py-3 font-black text-white shadow-lg shadow-candy-pink/30">
@@ -121,16 +152,37 @@ export default function SwipeScreen({ restaurants, currentIndex, likedCount, onL
 
       <ActionButtons onSkip={() => setExit('left')} onLike={() => setExit('right')} disabled={exit !== null} />
 
-      {/* The free map often doesn't know a place closed down, so let the user hide it.
+      {/* From 2 picks on, you can decide any time */}
+      {likedCount >= 2 && (
+        <div className="flex justify-center gap-2">
+          <button onClick={onSpinPicks} className={`${pillButton} bg-candy-pink text-white shadow-md shadow-candy-pink/30`}>
+            🎡 Spin ({likedCount})
+          </button>
+          <button onClick={onShowPicks} className={`${pillButton} bg-white text-candy-pink ring-1 ring-candy-pink-soft`}>
+            📋 My list
+          </button>
+        </div>
+      )}
+
+      {/* The free map often doesn't know a place closed down, so let people remove it.
           (Not for My Cafes — those are the user's own list.) */}
       {current.category !== 'saved' && (
         <button
-          onClick={() => onHide(current)}
+          onClick={() => onRemove(current)}
           disabled={exit !== null}
           className="self-center rounded-full bg-white/80 px-3 py-1.5 text-xs font-extrabold text-plum/50 ring-1 ring-candy-pink-soft transition hover:text-candy-pink active:scale-95 disabled:opacity-40"
         >
-          🚫 Closed down? Never show it again
+          🚫 Closed down? {isShared ? 'Remove for everyone' : 'Remove it'}
         </button>
+      )}
+
+      {showPrompt && (
+        <PicksPrompt
+          count={likedCount}
+          onSpin={onSpinPicks}
+          onList={onShowPicks}
+          onClose={() => setShowPrompt(false)}
+        />
       )}
     </div>
   )

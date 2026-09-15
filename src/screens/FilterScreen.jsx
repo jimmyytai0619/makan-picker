@@ -16,14 +16,14 @@ const inputClass =
  * @param {{
  *   initialFilters: import('../models').SearchFilters,
  *   savedCount: number,
- *   hiddenCount: number,
+ *   removedCount: number,
  *   isSearching: boolean,
  *   error: string | null,
  *   onSearch: (f: import('../models').SearchFilters) => void,
- *   onUnhideAll: () => void,
+ *   onShowRemoved: () => void,
  * }} props
  */
-export default function FilterScreen({ initialFilters, savedCount, hiddenCount, isSearching, error, onSearch, onUnhideAll }) {
+export default function FilterScreen({ initialFilters, savedCount, removedCount, isSearching, error, onSearch, onShowRemoved }) {
   const [playStyle, setPlayStyle] = useState(initialFilters.playStyle)
   const [source, setSource] = useState(initialFilters.source)
   const [location, setLocation] = useState(initialFilters.location)
@@ -167,9 +167,9 @@ export default function FilterScreen({ initialFilters, savedCount, hiddenCount, 
         {submitLabel}
       </button>
 
-      {hiddenCount > 0 && (
-        <button type="button" onClick={onUnhideAll} className="-mt-2 text-xs font-bold text-plum/45 hover:text-candy-pink">
-          🙈 {hiddenCount} hidden place{hiddenCount === 1 ? '' : 's'} · Show them again
+      {removedCount > 0 && (
+        <button type="button" onClick={onShowRemoved} className="-mt-2 text-xs font-bold text-plum/45 hover:text-candy-pink">
+          🗑️ {removedCount} removed place{removedCount === 1 ? '' : 's'} · See the list
         </button>
       )}
     </form>

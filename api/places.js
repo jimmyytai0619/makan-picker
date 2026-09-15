@@ -43,12 +43,11 @@ const KEPT_TAGS = [
   'shop',
   'cuisine',
   'opening_hours',
-  // Where the place is + how to contact it (each is only on some places)
+  // Where the place is + its website (each is only on some places)
   'addr:housenumber',
   'addr:street',
   'addr:postcode',
   'addr:city',
-  'phone',
   'website',
 ]
 

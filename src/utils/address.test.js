@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatOsmAddress, formatReverseAddress, googleMapsPlaceUrl, phoneLink, safeWebsiteUrl } from './address'
+import { formatOsmAddress, formatReverseAddress, googleMapsPlaceUrl, safeWebsiteUrl } from './address'
 
 describe('formatOsmAddress', () => {
   it('builds "number street, postcode city"', () => {
@@ -74,16 +74,5 @@ describe('safeWebsiteUrl', () => {
     expect(safeWebsiteUrl('javascript:alert(1)')).toBeNull()
     expect(safeWebsiteUrl('not a website')).toBeNull()
     expect(safeWebsiteUrl(null)).toBeNull()
-  })
-})
-
-describe('phoneLink', () => {
-  it('keeps only digits and + from the first number', () => {
-    expect(phoneLink('+60 3-9101 2345; +60 12-345 6789')).toBe('tel:+60391012345')
-  })
-
-  it('returns null for missing or too-short numbers', () => {
-    expect(phoneLink(null)).toBeNull()
-    expect(phoneLink('123')).toBeNull()
   })
 })
