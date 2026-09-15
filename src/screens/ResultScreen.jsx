@@ -6,11 +6,13 @@ import Confetti from '../components/Confetti'
  *
  * @param {{
  *   restaurant: import('../models').Restaurant | null,
+ *   isShared?: boolean,
  *   onBack?: () => void,
+ *   onRemove?: () => void,
  *   onStartOver: () => void,
  * }} props
  */
-export default function ResultScreen({ restaurant, onBack, onStartOver }) {
+export default function ResultScreen({ restaurant, isShared, onBack, onRemove, onStartOver }) {
   if (!restaurant) return null // safety net; shouldn't happen in normal flow
 
   const hasCoords = restaurant.lat != null && restaurant.lng != null
@@ -66,6 +68,15 @@ export default function ResultScreen({ restaurant, onBack, onStartOver }) {
         >
           ↺ Start over
         </button>
+        {/* People often only find out it closed when they check Google Maps, so let them remove it here too. */}
+        {onRemove && restaurant.category !== 'saved' && (
+          <button
+            onClick={onRemove}
+            className="self-center rounded-full bg-white/80 px-3 py-1.5 text-xs font-extrabold text-plum/50 ring-1 ring-candy-pink-soft transition hover:text-candy-pink active:scale-95"
+          >
+            🚫 Closed down? {isShared ? 'Remove for everyone' : 'Remove it'}
+          </button>
+        )}
       </div>
     </div>
   )

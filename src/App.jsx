@@ -122,6 +122,15 @@ export default function App() {
   function handleRemovePlace(restaurant) {
     removePlace(restaurant)
     handleRemovePick(restaurant) // a closed place can't be one of your picks either
+    // ...or on the wheel
+    setWheel((prev) => ({ ...prev, places: prev.places.filter((r) => r.id !== restaurant.id) }))
+  }
+
+  /** "Closed down?" on the result screen: remove it and go back to choose again. */
+  function handleRemoveChosen() {
+    handleRemovePlace(chosenRestaurant)
+    setChosenRestaurant(null)
+    setScreen(resultBackTo)
   }
 
   /** Put up to 12 random places from `places` on the wheel and show it. */
@@ -212,7 +221,9 @@ export default function App() {
         return (
           <ResultScreen
             restaurant={chosenRestaurant}
+            isShared={isShared}
             onBack={() => setScreen(resultBackTo)}
+            onRemove={handleRemoveChosen}
             onStartOver={handleStartOver}
           />
         )
