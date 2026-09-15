@@ -1,12 +1,30 @@
 /**
- * The ✕ / ♥ buttons under the swipe card. It doesn't know WHAT skip/like do —
+ * The ↩️ / ✕ / ♥ buttons under the swipe card. It doesn't know WHAT undo/skip/like do —
  * the parent passes those functions in. That keeps this reusable.
  *
- * @param {{ onSkip: () => void, onLike: () => void, disabled?: boolean }} props
+ * @param {{
+ *   onSkip: () => void,
+ *   onLike: () => void,
+ *   onUndo?: () => void,
+ *   canUndo?: boolean,
+ *   disabled?: boolean,
+ * }} props
  */
-export default function ActionButtons({ onSkip, onLike, disabled = false }) {
+export default function ActionButtons({ onSkip, onLike, onUndo, canUndo = false, disabled = false }) {
   return (
-    <div className="flex items-center justify-center gap-8">
+    <div className="flex items-center justify-center gap-6">
+      {onUndo && (
+        <button
+          type="button"
+          aria-label="Undo last swipe"
+          title="Undo last swipe (Backspace)"
+          onClick={onUndo}
+          disabled={disabled || !canUndo}
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-candy-butter text-xl shadow-md ring-1 ring-amber-100 transition hover:scale-105 active:scale-90 disabled:opacity-40"
+        >
+          ↩️
+        </button>
+      )}
       <button
         type="button"
         aria-label="Skip"
@@ -25,6 +43,8 @@ export default function ActionButtons({ onSkip, onLike, disabled = false }) {
       >
         ♥
       </button>
+      {/* Empty space as wide as ↩️, so ✕ and ♥ stay in the middle of the screen */}
+      {onUndo && <span className="h-12 w-12" aria-hidden="true" />}
     </div>
   )
 }

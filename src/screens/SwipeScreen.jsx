@@ -6,6 +6,7 @@ import Confetti from '../components/Confetti'
 
 /**
  * Tinder-style: swipe right (or ♥) for yum, left (or ✕) for nope.
+ * ↩️ (or Backspace) brings back the last card, e.g. after an accidental swipe.
  * On a laptop, the ← and → arrow keys work too.
  * From the 2nd yum on, a "Spin my picks" button appears under ✕ / ♥ (with confetti),
  * so you can keep swiping or let the wheel choose whenever you like.
@@ -15,8 +16,9 @@ import Confetti from '../components/Confetti'
  *   currentIndex: number,
  *   likedCount: number,
  *   isShared: boolean,
- *   onLike: (r: import('../models').Restaurant) => void,
- *   onNext: () => void,
+ *   canUndo: boolean,
+ *   onSwipe: (r: import('../models').Restaurant, liked: boolean) => void,
+ *   onUndo: () => void,
  *   onRemove: (r: import('../models').Restaurant) => void,
  *   onShowPicks: () => void,
  *   onSpinPicks: () => void,
@@ -28,8 +30,9 @@ export default function SwipeScreen({
   currentIndex,
   likedCount,
   isShared,
-  onLike,
-  onNext,
+  canUndo,
+  onSwipe,
+  onUndo,
   onRemove,
   onShowPicks,
   onSpinPicks,
@@ -43,32 +46,48 @@ export default function SwipeScreen({
 
   // Set when ✕ / ♥ / an arrow key is pressed: the card then flies away by itself.
   const [exit, setExit] = useState(null)
-  // Confetti once, at the moment the likes go from 1 to 2 (the spin button appears).
+  // Confetti every time the likes go from 1 to 2 (the spin button appears) — also again
+  // after an undo took you back to 1. The number is used as a key, so each burst is new.
   // (useRef remembers the previous count between renders without re-rendering.)
-  const [celebrate, setCelebrate] = useState(false)
+  const [celebrations, setCelebrations] = useState(0)
   const previousLikes = useRef(likedCount)
   useEffect(() => {
-    if (previousLikes.current < 2 && likedCount >= 2) setCelebrate(true)
+    if (previousLikes.current < 2 && likedCount >= 2) setCelebrations((n) => n + 1)
     previousLikes.current = likedCount
   }, [likedCount])
 
+  // True right after an undo, so the returning card pops back in instead of just appearing.
+  const [cameBack, setCameBack] = useState(false)
+
   function handleSwiped(direction) {
-    if (direction === 'right') onLike(current)
     setExit(null)
-    onNext()
+    setCameBack(false)
+    onSwipe(current, direction === 'right')
   }
 
-  // Keyboard: ← nope, → yum
+  function handleUndo() {
+    setCameBack(true)
+    onUndo()
+  }
+
+  // Keyboard: ← nope, → yum, Backspace = undo
   useEffect(() => {
-    if (isDone) return undefined
     function handleKey(event) {
       if (exit) return
+      if (event.key === 'Backspace' && canUndo) {
+        event.preventDefault()
+        setCameBack(true)
+        onUndo()
+        return
+      }
+      if (isDone) return
       if (event.key === 'ArrowRight') setExit('right')
       if (event.key === 'ArrowLeft') setExit('left')
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey) // cleanup when leaving
-  }, [isDone, exit])
+    // onUndo is in the list so the key always calls the LATEST version (with the latest swipes).
+  }, [isDone, exit, canUndo, onUndo])
 
   // --- Case 1: filters matched nothing ---
   if (restaurants.length === 0) {
@@ -110,6 +129,11 @@ export default function SwipeScreen({
             Try new filters
           </button>
         )}
+        {canUndo && (
+          <button onClick={handleUndo} className="px-3 py-1 text-sm font-extrabold text-plum/50 hover:text-candy-pink">
+            ↩️ Undo last swipe
+          </button>
+        )}
       </div>
     )
   }
@@ -117,7 +141,7 @@ export default function SwipeScreen({
   // --- Case 3: the card stack ---
   return (
     <div className="relative flex flex-1 flex-col gap-4">
-      {celebrate && <Confetti />}
+      {celebrations > 0 && <Confetti key={celebrations} />}
 
       <div className="flex items-center justify-between">
         <button onClick={onBack} className="rounded-full bg-white px-4 py-2 text-sm font-extrabold text-plum shadow-sm ring-1 ring-candy-pink-soft">
@@ -142,15 +166,23 @@ export default function SwipeScreen({
             <RestaurantCard restaurant={next} />
           </div>
         )}
-        {/* key= gives every place a brand-new draggable card */}
-        <SwipeableCard key={current.id} onSwipe={handleSwiped} exit={exit}>
-          <RestaurantCard restaurant={current} />
-        </SwipeableCard>
+        {/* key= gives every place a brand-new draggable card (and replays the pop after an undo) */}
+        <div key={current.id} className={cameBack ? 'animate-pop' : undefined}>
+          <SwipeableCard onSwipe={handleSwiped} exit={exit}>
+            <RestaurantCard restaurant={current} />
+          </SwipeableCard>
+        </div>
       </div>
 
       <p className="text-center text-xs font-bold text-plum/40">Swipe right if it looks yummy 😋 · left to skip</p>
 
-      <ActionButtons onSkip={() => setExit('left')} onLike={() => setExit('right')} disabled={exit !== null} />
+      <ActionButtons
+        onSkip={() => setExit('left')}
+        onLike={() => setExit('right')}
+        onUndo={handleUndo}
+        canUndo={canUndo}
+        disabled={exit !== null}
+      />
 
       {/* From 2 picks on: let the wheel choose, any time (no pop-up interrupting the swiping) */}
       {likedCount >= 2 && (

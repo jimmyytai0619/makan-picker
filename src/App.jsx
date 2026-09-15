@@ -15,6 +15,7 @@ import { useRemovedPlaces } from './hooks/useRemovedPlaces'
 import { addOpenStatus } from './utils/openingHours'
 import { markSavedPlaces, matchesKeywords, savedCafeToRestaurant, shuffle } from './utils/results'
 import { addLike } from './utils/likes'
+import { undoLastSwipe } from './utils/swipeHistory'
 import { WHEEL_MAX, pickForWheel } from './utils/roulette'
 
 // The screens, as constants so a typo is an error instead of a blank page.
@@ -41,6 +42,8 @@ export default function App() {
   // Which card the swipe screen is on. Kept HERE (not in SwipeScreen) so it
   // survives visiting your picks and coming back.
   const [swipeIndex, setSwipeIndex] = useState(0)
+  // Every swipe so far ({ id, liked }, oldest first), so ↩️ can undo them one by one.
+  const [swipeHistory, setSwipeHistory] = useState([])
   // The wheel: which list it draws from ('all' = every place found, 'picks' = your likes)
   // and the (up to 12) places currently on it.
   const [wheel, setWheel] = useState({ source: 'all', places: [] })
@@ -96,6 +99,7 @@ export default function App() {
     setSearchError(null)
     setLikedRestaurants([])
     setSwipeIndex(0) // new search = start from the first card
+    setSwipeHistory([])
 
     const searchId = ++searchIdRef.current
     setIsSearching(true)
@@ -124,6 +128,22 @@ export default function App() {
   function handleLike(restaurant) {
     // addLike ignores places that are already liked (safety net against duplicates).
     setLikedRestaurants((prev) => addLike(prev, restaurant))
+  }
+
+  /** A card was swiped: remember it (for undo) and show the next one. */
+  function handleSwipe(restaurant, liked) {
+    if (liked) handleLike(restaurant)
+    setSwipeHistory((prev) => [...prev, { id: restaurant.id, liked }])
+    setSwipeIndex((i) => i + 1)
+  }
+
+  /** ↩️: bring back the last swiped card, and take it out of your picks if you liked it. */
+  function handleUndoSwipe() {
+    const undo = undoLastSwipe(swipeHistory, visibleResults)
+    if (!undo) return
+    setSwipeHistory(undo.history)
+    setSwipeIndex(undo.index)
+    if (undo.entry.liked) setLikedRestaurants((prev) => prev.filter((r) => r.id !== undo.entry.id))
   }
 
   function handleRemovePick(restaurant) {
@@ -166,6 +186,7 @@ export default function App() {
     setLikedRestaurants([])
     setChosenRestaurant(null)
     setSwipeIndex(0)
+    setSwipeHistory([])
     setScreen(SCREENS.FILTER)
   }
 
@@ -206,8 +227,9 @@ export default function App() {
             currentIndex={swipeIndex}
             likedCount={likedRestaurants.length}
             isShared={isShared}
-            onLike={handleLike}
-            onNext={() => setSwipeIndex((i) => i + 1)}
+            canUndo={swipeHistory.length > 0}
+            onSwipe={handleSwipe}
+            onUndo={handleUndoSwipe}
             onRemove={handleRemovePlace}
             onShowPicks={() => setScreen(SCREENS.PICKS)}
             onSpinPicks={() => openWheel('picks', likedRestaurants)}
