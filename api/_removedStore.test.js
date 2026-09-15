@@ -8,7 +8,14 @@ import {
   storageMode,
 } from './_removedStore.js'
 
-const ENV_KEYS = ['KV_REST_API_URL', 'KV_REST_API_TOKEN', 'UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN', 'VERCEL']
+const ENV_KEYS = [
+  'SUPABASE_URL',
+  'VITE_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'SUPABASE_SECRET_KEY',
+  'VERCEL',
+]
 let savedEnv
 
 beforeEach(() => {
@@ -20,6 +27,14 @@ beforeEach(() => {
 afterEach(() => {
   ENV_KEYS.forEach((k) => (savedEnv[k] === undefined ? delete process.env[k] : (process.env[k] = savedEnv[k])))
   vi.unstubAllGlobals()
+})
+
+/** A fake answer from Supabase, shaped like what fetch() gives back. */
+const answer = (body = null, headers = {}) => ({
+  ok: true,
+  json: async () => body,
+  text: async () => JSON.stringify(body),
+  headers: { get: (name) => headers[name.toLowerCase()] ?? null },
 })
 
 describe('parseEntry (never trust what the browser sends)', () => {
@@ -43,13 +58,13 @@ describe('parseEntry (never trust what the browser sends)', () => {
 })
 
 describe('storageMode', () => {
-  it('uses memory on your Mac, and is unavailable on Vercel until a database is connected', () => {
+  it('uses memory on your Mac, and is unavailable on Vercel until Supabase is connected', () => {
     expect(storageMode()).toBe('memory')
     process.env.VERCEL = '1'
     expect(storageMode()).toBe('unavailable')
-    process.env.KV_REST_API_URL = 'https://example.upstash.io'
-    process.env.KV_REST_API_TOKEN = 'secret'
-    expect(storageMode()).toBe('redis')
+    process.env.SUPABASE_URL = 'https://abc.supabase.co'
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'eyJ.secret.jwt'
+    expect(storageMode()).toBe('supabase')
   })
 })
 
@@ -64,34 +79,73 @@ describe('memory list (npm run dev)', () => {
   })
 })
 
-describe('Upstash Redis list (on Vercel)', () => {
-  it('sends the right Redis commands with the secret token', async () => {
-    process.env.KV_REST_API_URL = 'https://example.upstash.io'
-    process.env.KV_REST_API_TOKEN = 'secret'
-    const entry = { id: 'osm-node-5', name: 'Tealive', category: 'cafe', removedAt: 5 }
-    const answers = [{ result: 3 }, { result: 1 }, { result: ['osm-node-5', JSON.stringify(entry)] }, { result: 1 }]
-    const fetch = vi.fn().mockImplementation(async () => ({ ok: true, json: async () => answers.shift() }))
+describe('Supabase list (on Vercel)', () => {
+  beforeEach(() => {
+    process.env.SUPABASE_URL = 'https://abc.supabase.co/'
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'eyJ.secret.jwt'
+  })
+
+  it('adds a place: counts first, then inserts, keeping the first removal', async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(answer([], { 'content-range': '0-0/3' }))
+      .mockResolvedValueOnce(answer())
     vi.stubGlobal('fetch', fetch)
 
-    await addRemoved(entry)
-    const list = await listRemoved()
-    await restoreRemoved('osm-node-5')
+    await addRemoved({ id: 'osm-node-5', name: 'Tealive', category: 'cafe', removedAt: Date.UTC(2026, 8, 15) })
 
-    const commands = fetch.mock.calls.map(([, options]) => JSON.parse(options.body))
-    expect(commands).toEqual([
-      ['HLEN', 'makan-picker:removed-places'],
-      ['HSET', 'makan-picker:removed-places', 'osm-node-5', JSON.stringify(entry)],
-      ['HGETALL', 'makan-picker:removed-places'],
-      ['HDEL', 'makan-picker:removed-places', 'osm-node-5'],
+    const [countUrl, countOptions] = fetch.mock.calls[0]
+    expect(countUrl).toBe('https://abc.supabase.co/rest/v1/removed_places?select=id&limit=1')
+    expect(countOptions.headers.Prefer).toBe('count=exact')
+
+    const [insertUrl, insertOptions] = fetch.mock.calls[1]
+    expect(insertUrl).toBe('https://abc.supabase.co/rest/v1/removed_places')
+    expect(insertOptions.method).toBe('POST')
+    expect(insertOptions.headers).toMatchObject({
+      apikey: 'eyJ.secret.jwt',
+      Authorization: 'Bearer eyJ.secret.jwt',
+      Prefer: 'resolution=ignore-duplicates,return=minimal',
+    })
+    expect(JSON.parse(insertOptions.body)).toEqual({
+      id: 'osm-node-5',
+      name: 'Tealive',
+      category: 'cafe',
+      removed_at: '2026-09-15T00:00:00.000Z',
+    })
+  })
+
+  it('lists places newest first and turns database dates into milliseconds', async () => {
+    const rows = [{ id: 'osm-node-5', name: 'Tealive', category: 'cafe', removed_at: '2026-09-15T00:00:00+00:00' }]
+    const fetch = vi.fn().mockResolvedValue(answer(rows))
+    vi.stubGlobal('fetch', fetch)
+
+    expect(await listRemoved()).toEqual([
+      { id: 'osm-node-5', name: 'Tealive', category: 'cafe', removedAt: Date.UTC(2026, 8, 15) },
     ])
-    expect(fetch.mock.calls[0][1].headers.Authorization).toBe('Bearer secret')
-    expect(list).toEqual([entry])
+    expect(fetch.mock.calls[0][0]).toContain('order=removed_at.desc')
+  })
+
+  it('restores a place with DELETE ?id=eq.…', async () => {
+    const fetch = vi.fn().mockResolvedValue(answer())
+    vi.stubGlobal('fetch', fetch)
+
+    await restoreRemoved('osm-node-5')
+    expect(fetch.mock.calls[0][0]).toBe('https://abc.supabase.co/rest/v1/removed_places?id=eq.osm-node-5')
+    expect(fetch.mock.calls[0][1].method).toBe('DELETE')
+  })
+
+  it('sends new "sb_secret_" keys only as apikey, never as Authorization', async () => {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'sb_secret_abc123'
+    const fetch = vi.fn().mockResolvedValue(answer([]))
+    vi.stubGlobal('fetch', fetch)
+
+    await listRemoved()
+    expect(fetch.mock.calls[0][1].headers.apikey).toBe('sb_secret_abc123')
+    expect(fetch.mock.calls[0][1].headers).not.toHaveProperty('Authorization')
   })
 
   it('refuses to add when the list is full', async () => {
-    process.env.KV_REST_API_URL = 'https://example.upstash.io'
-    process.env.KV_REST_API_TOKEN = 'secret'
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ result: 5000 }) }))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(answer([], { 'content-range': '0-0/5000' })))
     await expect(addRemoved({ id: 'osm-node-6', name: 'x', category: 'cafe', removedAt: 6 })).rejects.toThrow('full')
   })
 })
