@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import FilterScreen from './screens/FilterScreen'
+import LoadingScreen from './components/LoadingScreen'
 import SwipeScreen from './screens/SwipeScreen'
 import PicksScreen from './screens/PicksScreen'
 import RouletteScreen from './screens/RouletteScreen'
@@ -49,6 +50,9 @@ export default function App() {
   // Network requests take time and can fail, so they need these two extra states.
   const [isSearching, setIsSearching] = useState(false)
   const [searchError, setSearchError] = useState(null)
+  // Every search gets a number. If you press Cancel (or search again), the old
+  // search's answer is ignored when it finally arrives.
+  const searchIdRef = useRef(0)
 
   // Custom hooks: My Cafes (this phone) and the places removed because they closed
   // down (shared by everyone once the database is connected — see useRemovedPlaces).
@@ -93,9 +97,11 @@ export default function App() {
     setLikedRestaurants([])
     setSwipeIndex(0) // new search = start from the first card
 
+    const searchId = ++searchIdRef.current
     setIsSearching(true)
     try {
       const found = (await findPlaces(newFilters)).slice(0, MAX_PLACES)
+      if (searchId !== searchIdRef.current) return // cancelled while waiting
       setResults(found)
       if (newFilters.playStyle === 'roulette') {
         openWheel('all', found.filter((place) => !removedIds.has(place.id)))
@@ -104,10 +110,15 @@ export default function App() {
       }
     } catch (err) {
       // Network down, server busy, etc. Stay on the Filter screen and show why.
-      setSearchError(err.message)
+      if (searchId === searchIdRef.current) setSearchError(err.message)
     } finally {
-      setIsSearching(false)
+      if (searchId === searchIdRef.current) setIsSearching(false)
     }
+  }
+
+  function handleCancelSearch() {
+    searchIdRef.current += 1 // the running search is now "old" and will be ignored
+    setIsSearching(false)
   }
 
   function handleLike(restaurant) {
@@ -162,6 +173,17 @@ export default function App() {
   function renderScreen() {
     switch (screen) {
       case SCREENS.FILTER:
+        // The free map can take ~30 s, so show something fun meanwhile.
+        // (My Cafes searches are instant, so they skip this.)
+        if (isSearching && filters.source === 'nearby') {
+          return (
+            <LoadingScreen
+              placeLabel={filters.location?.label}
+              radiusKm={filters.maxDistanceKm}
+              onCancel={handleCancelSearch}
+            />
+          )
+        }
         return (
           <FilterScreen
             initialFilters={filters}
@@ -244,7 +266,7 @@ export default function App() {
   }
 
   // Tabs only on the two "home" screens, so you can't jump away mid-swipe.
-  const showTabs = screen === SCREENS.FILTER || screen === SCREENS.SAVED
+  const showTabs = !isSearching && (screen === SCREENS.FILTER || screen === SCREENS.SAVED)
 
   return (
     <div className="min-h-dvh bg-gradient-to-b from-candy-pink-soft via-cream to-candy-mint/50 font-sans text-plum">
