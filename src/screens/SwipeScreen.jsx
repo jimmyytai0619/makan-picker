@@ -2,14 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import RestaurantCard from '../components/RestaurantCard'
 import SwipeableCard from '../components/SwipeableCard'
 import ActionButtons from '../components/ActionButtons'
-import PicksPrompt from '../components/PicksPrompt'
-
-const pillButton = 'rounded-full px-4 py-2 text-sm font-black transition active:scale-95'
+import Confetti from '../components/Confetti'
 
 /**
  * Tinder-style: swipe right (or ♥) for yum, left (or ✕) for nope.
  * On a laptop, the ← and → arrow keys work too.
- * After the 2nd yum, a pop-up asks: spin the wheel, see the list, or keep swiping.
+ * From the 2nd yum on, a "Spin my picks" button appears under ✕ / ♥ (with confetti),
+ * so you can keep swiping or let the wheel choose whenever you like.
  *
  * @param {{
  *   restaurants: import('../models').Restaurant[],
@@ -44,13 +43,12 @@ export default function SwipeScreen({
 
   // Set when ✕ / ♥ / an arrow key is pressed: the card then flies away by itself.
   const [exit, setExit] = useState(null)
-  const [showPrompt, setShowPrompt] = useState(false)
-
-  // Pop up once, at the moment the likes go from 1 to 2.
+  // Confetti once, at the moment the likes go from 1 to 2 (the spin button appears).
   // (useRef remembers the previous count between renders without re-rendering.)
+  const [celebrate, setCelebrate] = useState(false)
   const previousLikes = useRef(likedCount)
   useEffect(() => {
-    if (previousLikes.current < 2 && likedCount >= 2) setShowPrompt(true)
+    if (previousLikes.current < 2 && likedCount >= 2) setCelebrate(true)
     previousLikes.current = likedCount
   }, [likedCount])
 
@@ -60,9 +58,9 @@ export default function SwipeScreen({
     onNext()
   }
 
-  // Keyboard: ← nope, → yum (not while the pop-up is open)
+  // Keyboard: ← nope, → yum
   useEffect(() => {
-    if (isDone || showPrompt) return undefined
+    if (isDone) return undefined
     function handleKey(event) {
       if (exit) return
       if (event.key === 'ArrowRight') setExit('right')
@@ -70,7 +68,7 @@ export default function SwipeScreen({
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey) // cleanup when leaving
-  }, [isDone, exit, showPrompt])
+  }, [isDone, exit])
 
   // --- Case 1: filters matched nothing ---
   if (restaurants.length === 0) {
@@ -118,7 +116,9 @@ export default function SwipeScreen({
 
   // --- Case 3: the card stack ---
   return (
-    <div className="flex flex-1 flex-col gap-4">
+    <div className="relative flex flex-1 flex-col gap-4">
+      {celebrate && <Confetti />}
+
       <div className="flex items-center justify-between">
         <button onClick={onBack} className="rounded-full bg-white px-4 py-2 text-sm font-extrabold text-plum shadow-sm ring-1 ring-candy-pink-soft">
           ← Filters
@@ -152,14 +152,18 @@ export default function SwipeScreen({
 
       <ActionButtons onSkip={() => setExit('left')} onLike={() => setExit('right')} disabled={exit !== null} />
 
-      {/* From 2 picks on, you can decide any time */}
+      {/* From 2 picks on: let the wheel choose, any time (no pop-up interrupting the swiping) */}
       {likedCount >= 2 && (
-        <div className="flex justify-center gap-2">
-          <button onClick={onSpinPicks} className={`${pillButton} bg-candy-pink text-white shadow-md shadow-candy-pink/30`}>
-            🎡 Spin ({likedCount})
+        <div className="flex flex-col items-center gap-1">
+          <button
+            onClick={onSpinPicks}
+            disabled={exit !== null}
+            className="w-full animate-pop rounded-full bg-gradient-to-r from-candy-pink to-[#ff9ab9] py-4 text-lg font-black text-white shadow-lg shadow-candy-pink/30 transition hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+          >
+            🎡 Spin my {likedCount} picks!
           </button>
-          <button onClick={onShowPicks} className={`${pillButton} bg-white text-candy-pink ring-1 ring-candy-pink-soft`}>
-            📋 My list
+          <button onClick={onShowPicks} className="px-3 py-1 text-sm font-extrabold text-candy-pink/80 hover:text-candy-pink">
+            or see my list 📋
           </button>
         </div>
       )}
@@ -174,15 +178,6 @@ export default function SwipeScreen({
         >
           🚫 Closed down? {isShared ? 'Remove for everyone' : 'Remove it'}
         </button>
-      )}
-
-      {showPrompt && (
-        <PicksPrompt
-          count={likedCount}
-          onSpin={onSpinPicks}
-          onList={onShowPicks}
-          onClose={() => setShowPrompt(false)}
-        />
       )}
     </div>
   )
