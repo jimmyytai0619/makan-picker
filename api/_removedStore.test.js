@@ -149,3 +149,30 @@ describe('Supabase list (on Vercel)', () => {
     await expect(addRemoved({ id: 'osm-node-6', name: 'x', category: 'cafe', removedAt: 6 })).rejects.toThrow('full')
   })
 })
+
+describe('error reasons (short safe codes for debugging)', () => {
+  beforeEach(() => {
+    process.env.SUPABASE_URL = 'https://abc.supabase.co'
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'eyJ.secret.jwt'
+  })
+
+  it('turns "table not found" into supabase_404:PGRST205', async () => {
+    const notFound = {
+      ok: false,
+      status: 404,
+      text: async () => JSON.stringify({ code: 'PGRST205', message: "Could not find the table 'public.removed_places'" }),
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(notFound))
+    await expect(listRemoved()).rejects.toMatchObject({ reason: 'supabase_404:PGRST205' })
+  })
+
+  it('keeps only the status number when the answer is not JSON', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 401, text: async () => 'Unauthorized' }))
+    await expect(listRemoved()).rejects.toMatchObject({ reason: 'supabase_401' })
+  })
+
+  it('says "network" when Supabase cannot be reached at all', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('fetch failed')))
+    await expect(listRemoved()).rejects.toMatchObject({ reason: 'network' })
+  })
+})
