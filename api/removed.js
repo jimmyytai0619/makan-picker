@@ -54,7 +54,12 @@ export default async function handler(req, res) {
 
     return sendJson(res, 405, { error: 'Use GET, POST or DELETE' })
   } catch (err) {
-    console.error(err.message) // appears in Vercel's Logs tab
-    return sendJson(res, 503, { error: 'The shared removed list is not available right now.' })
+    console.error(err.message) // the full details appear in Vercel's Logs tab
+    // `reason` is a short safe code (e.g. "supabase_404:PGRST205") so problems can be
+    // found without opening the logs. It never contains keys or full messages.
+    return sendJson(res, 503, {
+      error: 'The shared removed list is not available right now.',
+      reason: err.reason ?? 'unknown',
+    })
   }
 }

@@ -53,14 +53,39 @@ async function supabase(path, { method = 'GET', body, prefer } = {}) {
   if (!key.startsWith('sb_')) headers.Authorization = `Bearer ${key}`
   if (prefer) headers.Prefer = prefer
 
-  const response = await fetch(`${url.replace(/\/$/, '')}/rest/v1/${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-    signal: AbortSignal.timeout(5000),
-  })
-  if (!response.ok) throw new Error(`Supabase answered ${response.status}: ${(await response.text()).slice(0, 200)}`)
+  let response
+  try {
+    response = await fetch(`${url.replace(/\/$/, '')}/rest/v1/${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(5000),
+    })
+  } catch (err) {
+    // No answer at all: wrong address, no network, or too slow.
+    throw storeError(`Could not reach Supabase: ${err.message}`, err.name === 'TimeoutError' ? 'timeout' : 'network')
+  }
+
+  if (!response.ok) {
+    const text = await response.text()
+    // Supabase explains errors with a short code, e.g. PGRST205 = "table not found".
+    // Only that code goes back to the browser — never keys or the full message.
+    let code = ''
+    try {
+      code = String(JSON.parse(text).code ?? '').replace(/[^\w]/g, '').slice(0, 12)
+    } catch {
+      // not JSON — keep just the status number
+    }
+    throw storeError(`Supabase answered ${response.status}: ${text.slice(0, 200)}`, `supabase_${response.status}${code ? `:${code}` : ''}`)
+  }
   return response
+}
+
+/** An Error with a short, safe `reason` code that the API may show, to help debugging. */
+function storeError(message, reason) {
+  const error = new Error(message)
+  error.reason = reason
+  return error
 }
 
 /**
