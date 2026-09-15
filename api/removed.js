@@ -6,7 +6,7 @@
 // Uses plain Node.js req/res, so the SAME code runs on Vercel and in `npm run dev`
 // (see the devApi plugin in vite.config.js).
 
-import { addRemoved, isValidId, listRemoved, parseEntry, restoreRemoved, storageMode } from './_removedStore.js'
+import { addRemoved, isValidId, listRemoved, parseEntry, restoreRemoved, storageMode, supabaseProjectRef } from './_removedStore.js'
 
 function sendJson(res, statusCode, body) {
   res.statusCode = statusCode
@@ -60,6 +60,7 @@ export default async function handler(req, res) {
     return sendJson(res, 503, {
       error: 'The shared removed list is not available right now.',
       reason: err.reason ?? 'unknown',
+      project: supabaseProjectRef() ?? undefined, // which Supabase project the app talks to (not a secret)
     })
   }
 }

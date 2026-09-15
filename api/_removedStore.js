@@ -33,6 +33,21 @@ export function storageMode() {
   return process.env.VERCEL ? 'unavailable' : 'memory'
 }
 
+/**
+ * The Supabase project id from its address: "abcd" in https://abcd.supabase.co.
+ * Not a secret (every Supabase app's address contains it). Shown in error
+ * answers so you can check the app talks to the project you think it does.
+ */
+export function supabaseProjectRef() {
+  const { url } = supabaseConfig()
+  try {
+    const host = new URL(url).hostname
+    return host.endsWith('.supabase.co') ? host.split('.')[0] : null
+  } catch {
+    return null
+  }
+}
+
 const memory = new Map()
 
 /** For tests only: start with an empty in-memory list. */

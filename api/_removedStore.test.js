@@ -6,6 +6,7 @@ import {
   resetMemoryForTests,
   restoreRemoved,
   storageMode,
+  supabaseProjectRef,
 } from './_removedStore.js'
 
 const ENV_KEYS = [
@@ -174,5 +175,16 @@ describe('error reasons (short safe codes for debugging)', () => {
   it('says "network" when Supabase cannot be reached at all', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('fetch failed')))
     await expect(listRemoved()).rejects.toMatchObject({ reason: 'network' })
+  })
+})
+
+describe('supabaseProjectRef', () => {
+  it('reads the project id from the Supabase address', () => {
+    process.env.SUPABASE_URL = 'https://abcd1234.supabase.co/'
+    expect(supabaseProjectRef()).toBe('abcd1234')
+  })
+
+  it('is null when there is no Supabase address', () => {
+    expect(supabaseProjectRef()).toBeNull()
   })
 })
