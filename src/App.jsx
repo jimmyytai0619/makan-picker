@@ -57,10 +57,10 @@ export default function App() {
   // search's answer is ignored when it finally arrives.
   const searchIdRef = useRef(0)
 
-  // Custom hooks: My Cafes (this phone) and the places removed because they closed
-  // down (shared by everyone once the database is connected — see useRemovedPlaces).
+  // Custom hooks, both kept on this phone: My Cafes, and the places hidden because
+  // they closed down (see useRemovedPlaces).
   const { cafes: savedCafes, addCafes, removeCafe } = useSavedCafes()
-  const { removed, isShared, removePlace, restorePlace } = useRemovedPlaces()
+  const { removed, removePlace, restorePlace } = useRemovedPlaces()
 
   // Derived: the results without removed places. Removing the current card takes it
   // out of this list, so the next card slides into the same position.
@@ -226,7 +226,6 @@ export default function App() {
             restaurants={visibleResults}
             currentIndex={swipeIndex}
             likedCount={likedRestaurants.length}
-            isShared={isShared}
             canUndo={swipeHistory.length > 0}
             onSwipe={handleSwipe}
             onUndo={handleUndoSwipe}
@@ -265,7 +264,6 @@ export default function App() {
         return (
           <ResultScreen
             restaurant={chosenRestaurant}
-            isShared={isShared}
             onBack={() => setScreen(resultBackTo)}
             onRemove={handleRemoveChosen}
             onStartOver={handleStartOver}
@@ -276,7 +274,6 @@ export default function App() {
         return (
           <RemovedScreen
             removed={removed}
-            isShared={isShared}
             onRestore={restorePlace}
             onBack={() => setScreen(SCREENS.FILTER)}
           />

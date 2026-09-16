@@ -15,7 +15,6 @@ import Confetti from '../components/Confetti'
  *   restaurants: import('../models').Restaurant[],
  *   currentIndex: number,
  *   likedCount: number,
- *   isShared: boolean,
  *   canUndo: boolean,
  *   onSwipe: (r: import('../models').Restaurant, liked: boolean) => void,
  *   onUndo: () => void,
@@ -29,7 +28,6 @@ export default function SwipeScreen({
   restaurants,
   currentIndex,
   likedCount,
-  isShared,
   canUndo,
   onSwipe,
   onUndo,
@@ -208,7 +206,7 @@ export default function SwipeScreen({
           disabled={exit !== null}
           className="self-center rounded-full bg-white/80 px-3 py-1.5 text-xs font-extrabold text-plum/50 ring-1 ring-candy-pink-soft transition hover:text-candy-pink active:scale-95 disabled:opacity-40"
         >
-          🚫 Closed down? {isShared ? 'Remove for everyone' : 'Remove it'}
+          🚫 Closed down? Hide it
         </button>
       )}
     </div>

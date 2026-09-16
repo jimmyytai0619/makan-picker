@@ -10,13 +10,3 @@ export function withEntry(list, entry) {
 export function withoutId(list, id) {
   return list.filter((e) => e.id !== id)
 }
-
-/**
- * The shared list (from the server) plus removals that only this phone knows
- * about yet — e.g. ones made before the shared list was set up, or while offline.
- * Without this, those removals would silently come back.
- */
-export function mergeRemoved(shared, onThisPhone) {
-  const sharedIds = new Set(shared.map((e) => e.id))
-  return [...onThisPhone.filter((e) => !sharedIds.has(e.id)), ...shared]
-}
