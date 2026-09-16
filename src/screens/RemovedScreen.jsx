@@ -2,16 +2,15 @@ import { categoryStyle } from '../data/categories'
 import { formatTimeAgo } from '../utils/format'
 
 /**
- * Every place someone removed because it closed down. Restore one if it was a mistake.
+ * Every place you removed because it closed down. Restore one if it was a mistake.
  *
  * @param {{
  *   removed: Array<{ id: string, name: string, category: string, removedAt: number }>,
- *   isShared: boolean,
  *   onRestore: (id: string) => void,
  *   onBack: () => void,
  * }} props
  */
-export default function RemovedScreen({ removed, isShared, onRestore, onBack }) {
+export default function RemovedScreen({ removed, onRestore, onBack }) {
   return (
     <div className="flex flex-1 flex-col gap-4">
       <button
@@ -24,9 +23,7 @@ export default function RemovedScreen({ removed, isShared, onRestore, onBack }) 
       <div className="text-center">
         <h2 className="text-2xl font-black text-plum">Removed places 🗑️</h2>
         <p className="text-sm text-plum/60">
-          {isShared
-            ? 'Removed for everyone because they closed down. Removed by mistake? Restore it.'
-            : 'Removed on this phone only (the shared list is not set up yet).'}
+          Hidden on this phone because they closed down. Removed by mistake? Restore it.
         </p>
       </div>
 
