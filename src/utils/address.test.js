@@ -47,9 +47,9 @@ describe('formatReverseAddress', () => {
 })
 
 describe('googleMapsPlaceUrl', () => {
-  it('searches the name around the exact spot', () => {
+  it('opens the exact coordinates rather than another branch with the same name', () => {
     expect(googleMapsPlaceUrl({ name: 'Brew & Boulder', lat: 3.0457, lng: 101.759 })).toBe(
-      'https://www.google.com/maps/search/Brew%20%26%20Boulder/@3.0457,101.759,17z',
+      'https://www.google.com/maps/search/?api=1&query=3.0457%2C101.759',
     )
   })
 

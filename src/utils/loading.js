@@ -13,9 +13,9 @@ export const LOADING_MESSAGES = [
 
 // After a while, be honest that it's slow (the free map server takes up to ~30 s).
 export const SLOW_MESSAGES = [
-  'The free map is slow today, almost there! 🐢',
+  'The free map is taking longer today 🐢',
   'Still cooking… good food takes time 🍳',
-  'Almost ready, catch more snacks! 😋',
+  'Still waiting for the map service 😋',
 ]
 
 export const MESSAGE_EVERY_MS = 2200

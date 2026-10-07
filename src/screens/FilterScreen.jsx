@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import LocationPicker from '../components/LocationPicker'
 
 const PLAY_STYLES = [
@@ -23,7 +23,7 @@ const inputClass =
  *   onShowRemoved: () => void,
  * }} props
  */
-export default function FilterScreen({ initialFilters, savedCount, removedCount, isSearching, error, onSearch, onShowRemoved }) {
+export default function FilterScreen({ initialFilters, savedCount, removedCount, isSearching, error, onSearch, onShowRemoved, onFiltersChange, onRetry, previousSearch, onUsePrevious }) {
   const [playStyle, setPlayStyle] = useState(initialFilters.playStyle)
   const [source, setSource] = useState(initialFilters.source)
   const [location, setLocation] = useState(initialFilters.location)
@@ -31,13 +31,19 @@ export default function FilterScreen({ initialFilters, savedCount, removedCount,
   const [cuisineKeyword, setCuisineKeyword] = useState(initialFilters.cuisineKeyword)
   const [hideClosed, setHideClosed] = useState(initialFilters.hideClosed)
 
+  const [avoidRecent, setAvoidRecent] = useState(initialFilters.avoidRecent ?? false)
+  useEffect(() => {
+    onFiltersChange?.({ playStyle, source, location, maxDistanceKm, cuisineKeyword, hideClosed, avoidRecent })
+  }, [playStyle, source, location, maxDistanceKm, cuisineKeyword, hideClosed, avoidRecent, onFiltersChange])
+
   const isNearby = source === 'nearby'
   const canSearch = !isSearching && (isNearby ? location !== null : savedCount > 0)
+  const searchHint = isNearby && !location ? 'Search for an area above, then tap a location result to enable this button.' : !isNearby && savedCount === 0 ? 'Add a cafe in My Cafes first, or switch to Nearby.' : null
 
   function handleSubmit(event) {
     event.preventDefault()
     if (!canSearch) return
-    onSearch({ playStyle, source, location, maxDistanceKm, cuisineKeyword, hideClosed })
+    onSearch({ playStyle, source, location, maxDistanceKm, cuisineKeyword, hideClosed, avoidRecent })
   }
 
   const submitLabel = isSearching
@@ -108,7 +114,7 @@ export default function FilterScreen({ initialFilters, savedCount, removedCount,
 
             <label className="flex flex-col gap-2">
               <span className="font-extrabold text-plum">
-                Max distance: <span className="text-candy-pink">{maxDistanceKm} km</span>
+                Search radius: <span className="text-candy-pink">{maxDistanceKm} km</span>
               </span>
               {/* Capped at 10 km: bigger circles = thousands of results = slow free server */}
               <input
@@ -150,15 +156,19 @@ export default function FilterScreen({ initialFilters, savedCount, removedCount,
               className="h-5 w-5 accent-candy-pink"
             />
             <span>
-              <span className="font-extrabold text-plum">Hide places closed now</span>
-              <span className="block text-xs text-plum/50">Only ~1 in 5 places list their hours. Unknown ones stay.</span>
+              <span className="font-extrabold text-plum">Hide places scheduled closed</span>
+              <span className="block text-xs text-plum/50">Based on listed hours in Malaysia time. Unknown hours stay.</span>
             </span>
           </label>
         )}
       </div>
 
-      {error && <p className="rounded-2xl bg-rose-50 p-3 text-sm font-semibold text-rose-600">{error}</p>}
+      <label className="flex items-center gap-3 text-sm font-bold"><input type="checkbox" checked={avoidRecent} onChange={e => setAvoidRecent(e.target.checked)} className="h-5 w-5 accent-candy-pink" />Avoid my recent winners</label>
 
+      {error && <p className="rounded-2xl bg-rose-50 p-3 text-sm font-semibold text-rose-600">{error}<button type="button" onClick={onRetry} className="mt-2 block font-extrabold underline">Retry search</button></p>}
+      {previousSearch && <button type="button" onClick={onUsePrevious} className="rounded-2xl bg-white p-3 text-left text-sm ring-1 ring-candy-pink-soft"><span className="block font-extrabold">Reopen previous results: {previousSearch.filters.location?.label}</span><span className="text-xs text-plum/60">Saved {new Date(previousSearch.updatedAt).toLocaleString()} · uses previous settings; map data may be older</span></button>}
+
+      {searchHint && <p role="status" className="text-center text-sm font-semibold text-plum/65">{searchHint}</p>}
       <button
         type="submit"
         disabled={!canSearch}
@@ -169,7 +179,7 @@ export default function FilterScreen({ initialFilters, savedCount, removedCount,
 
       {removedCount > 0 && (
         <button type="button" onClick={onShowRemoved} className="-mt-2 text-xs font-bold text-plum/45 hover:text-candy-pink">
-          🗑️ {removedCount} removed place{removedCount === 1 ? '' : 's'} · See the list
+          🗑️ {removedCount} hidden place{removedCount === 1 ? '' : 's'} · See the list
         </button>
       )}
     </form>

@@ -16,7 +16,7 @@ export default function PlaceRow({ place, onOpen, onRemove }) {
   const address = usePlaceAddress(place)
 
   const subtitle =
-    address.status === 'ready' ? `${address.isApproximate ? 'Near ' : ''}${address.text}` : style.label
+    address.status === 'ready' ? `${address.isApproximate ? 'Approximate area: ' : ''}${address.text}` : style.label
 
   return (
     <li className="flex items-center gap-3 rounded-3xl bg-white p-3 shadow-sm ring-1 ring-candy-pink-soft">
@@ -31,7 +31,7 @@ export default function PlaceRow({ place, onOpen, onRemove }) {
           <span className="block truncate text-xs text-plum/60">{subtitle}</span>
           {place.distanceInKm != null && (
             <span className="mt-1 inline-block rounded-full bg-candy-sky px-2 py-0.5 text-xs font-bold text-plum/80">
-              🧭 {formatDistance(place.distanceInKm)}
+              🧭 {formatDistance(place.distanceInKm)} straight-line
             </span>
           )}
         </span>

@@ -25,4 +25,5 @@ function devApi() {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss(), devApi()],
+  test: { include: ['src/**/*.test.{js,jsx}', 'api/**/*.test.js'] },
 })

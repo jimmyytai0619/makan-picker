@@ -74,6 +74,7 @@
  * @property {ChosenLocation|null} location
  * @property {number} maxDistanceKm
  * @property {string} cuisineKeyword      comma-separated, e.g. "mamak, roti" — empty = anything
+ * @property {boolean} avoidRecent        exclude the last 20 different wheel winners
  * @property {boolean} hideClosed         hide places we KNOW are closed right now
  */
 
@@ -85,6 +86,7 @@ export const DEFAULT_FILTERS = {
   maxDistanceKm: 3,
   cuisineKeyword: '',
   hideClosed: false,
+  avoidRecent: false,
 }
 
 /** Turns a priceLevel number into "RM", "RM RM", ... for display. */

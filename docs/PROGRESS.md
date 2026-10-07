@@ -8,6 +8,35 @@ My notes on everything built so far, what each step did, and what I learned.
 
 ---
 
+## Current update — 7 October 2026
+
+Implemented locally:
+
+- Remember the chosen area and filters as they change. GPS remains an explicit button action; remembered GPS coordinates are the last chosen position.
+- Failed searches have a retry button. While waiting or from the start screen, reopen the last successful nearby search with its original settings and save time (map data can be older). Opening status is recalculated; if its library cannot load offline, status is unknown.
+- Hidden places are personal to this device, with restore support. The app no longer fetches or changes the shared removal list; existing local removals are preserved.
+- The Library stores favourites and the last 20 distinct wheel winners. A new search can exclude recent winners. Revisited Library cards do not claim a current distance or opening status.
+- GitHub Actions is already configured to run tests and builds; the older next-steps list below is historical.
+
+### Friends' testing follow-up — 8 October 2026
+
+- Read the deployed bundle: it lacks the local Library and persistent-picks changes. Live behaviour is not evidence that these local changes are deployed.
+- Reproduced the location query: "Faber Tower" returns a Faber Towers (Opp) bus stop in Taman Desa. Show the full area, map type and a map-pin check; users must select the correct result.
+- The live 1 km nearby API returned a busy-server error during the check. The number of restaurants currently mapped there was not verified.
+- Replace name-based map links with exact coordinate pins; review searches remain separate and explicitly require checking the branch.
+- Save right-swiped places to favourites, keep current picks across reloads, and provide Library access from result screens. Undo removes a newly saved favourite but preserves one already saved before the swipe.
+- Explain why Start is disabled and why a search may have only one matching mapped place.
+- Replace browser-only AbortSignal.timeout with a compatible timeout helper, preserving friendly retry errors.
+- Added mobile-layout Chromium tests for starting, dragging, undo, saving/reloading, 1 km boundaries, exact map links and busy-server retry. These use controlled map responses; they do not prove live map availability or restaurant data completeness.
+
+### Place-information accuracy
+
+- Recalculate straight-line distances for the exact search point, including cache hits, and exclude results beyond the requested radius.
+- Expire the browser's nearby-data cache after five minutes. Vercel's map-data cache still applies, so saved timestamps are not claims that restaurant information was verified then.
+- Calculate listed schedules in Malaysia time and refresh card badges every minute and when returning to the page. Labels say scheduled open/closed; missing or unsupported holiday/solar rules remain unknown.
+- Label reverse-geocoded locations as approximate areas and remembered GPS coordinates as the last selected position.
+- Google photos/reviews links are searches, not verified restaurant listings.
+
 ## Timeline
 
 | Date | What happened | Where |

@@ -1,6 +1,7 @@
+import { useOpeningStatus } from '../hooks/useOpeningStatus'
 import { formatPriceLevel } from '../models'
 import { usePlaceAddress } from '../hooks/usePlaceAddress'
-import { googleMapsPlaceUrl, safeWebsiteUrl } from '../utils/address'
+import { googleMapsPlaceUrl, googleMapsReviewsUrl, safeWebsiteUrl } from '../utils/address'
 import { categoryStyle } from '../data/categories'
 import { formatDistance } from '../utils/format'
 
@@ -25,12 +26,12 @@ export default function RestaurantCard({ restaurant }) {
     distanceInKm,
     priceLevel,
     openingHours,
-    openStatus,
     isSaved,
     sourceUrl,
     savedFrom,
     website,
   } = restaurant
+  const openStatus = useOpeningStatus(restaurant)
   const style = categoryStyle(category)
 
   // Real address from OSM, or the nearest road looked up from the map point.
@@ -56,7 +57,7 @@ export default function RestaurantCard({ restaurant }) {
           <h2 className="text-2xl font-black leading-tight text-plum">{name}</h2>
           {placeAddress.status === 'ready' && (
             <p className="text-sm font-semibold text-plum/60">
-              📍 {placeAddress.isApproximate ? 'Near ' : ''}
+              📍 {placeAddress.isApproximate ? 'Approximate area: ' : ''}
               {placeAddress.text}
             </p>
           )}
@@ -64,11 +65,12 @@ export default function RestaurantCard({ restaurant }) {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {openStatus === 'open' && <span className={`${chip} bg-candy-mint text-emerald-800`}>🟢 Open now</span>}
-          {openStatus === 'closed' && <span className={`${chip} bg-slate-100 text-slate-500`}>🌙 Closed now</span>}
+          {openStatus === 'open' && <span className={`${chip} bg-candy-mint text-emerald-800`}>🟢 Scheduled open</span>}
+          {openStatus === 'closed' && <span className={`${chip} bg-slate-100 text-slate-500`}>🌙 Scheduled closed</span>}
+          {openStatus === 'unknown' && <span className={`${chip} bg-slate-100 text-slate-600`}>Hours unknown</span>}
           {/* `!= null` catches both null and undefined, but NOT 0 */}
           {distanceInKm != null && (
-            <span className={`${chip} bg-candy-sky text-sky-900`}>🧭 {formatDistance(distanceInKm)}</span>
+            <span className={`${chip} bg-candy-sky text-sky-900`}>🧭 {formatDistance(distanceInKm)} straight-line</span>
           )}
           {cuisine && <span className={`${chip} bg-candy-lilac text-violet-900`}>🍽️ {cuisine}</span>}
           {rating != null && <span className={`${chip} bg-candy-butter text-amber-900`}>⭐ {rating.toFixed(1)}</span>}
@@ -76,6 +78,8 @@ export default function RestaurantCard({ restaurant }) {
             <span className={`${chip} bg-candy-mint text-emerald-800`}>{formatPriceLevel(priceLevel)}</span>
           )}
         </div>
+
+        <p className="text-xs text-plum/55">{category === 'saved' ? 'Saved by you; location and hours are unverified.' : 'OpenStreetMap details may be outdated. Hours are a schedule estimate in Malaysia time; confirm before travelling.'}</p>
 
         {openingHours && <p className="text-xs font-semibold text-plum/45">🕒 {openingHours}</p>}
 
@@ -87,8 +91,9 @@ export default function RestaurantCard({ restaurant }) {
             rel="noreferrer"
             className={`${linkPill} bg-candy-pink-soft text-candy-pink`}
           >
-            📷 Photos & reviews
+            {Number.isFinite(restaurant.lat) && Number.isFinite(restaurant.lng) ? '📍 Exact map pin' : '📍 Search on Maps'}
           </a>
+          <a href={googleMapsReviewsUrl(restaurant)} target="_blank" rel="noreferrer" className={`${linkPill} bg-candy-lilac text-violet-900`}>📷 Search reviews (check branch)</a>
           {websiteLink && (
             <a href={websiteLink} target="_blank" rel="noreferrer" className={`${linkPill} bg-candy-sky text-sky-900`}>
               🌐 Website

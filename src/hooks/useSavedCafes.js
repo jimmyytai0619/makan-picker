@@ -13,7 +13,8 @@ const STORAGE_KEY = 'makan-picker:saved-cafes'
 function loadFromStorage() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : []
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed.filter(c => c && typeof c.id === 'string' && typeof c.name === 'string') : []
   } catch {
     return []
   }

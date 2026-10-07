@@ -34,7 +34,7 @@ function prefersReducedMotion() {
  *
  * @param {{ placeLabel?: string, radiusKm?: number, onCancel?: () => void }} props
  */
-export default function LoadingScreen({ placeLabel, radiusKm, onCancel }) {
+export default function LoadingScreen({ placeLabel, radiusKm, onCancel, onUsePrevious, previousLabel }) {
   // --- Time: re-render 4× a second so the message and bar move ---
   const [startedAt] = useState(() => Date.now())
   const [now, setNow] = useState(startedAt)
@@ -138,6 +138,9 @@ export default function LoadingScreen({ placeLabel, radiusKm, onCancel }) {
           {placeLabel} · within {radiusKm} km
         </p>
       )}
+
+      <p className="text-sm text-plum/60" role="status">{elapsed < 12000 ? 'Waiting for nearby places…' : 'The map service is taking longer than usual. You can cancel or reopen previous results.'}</p>
+      {onUsePrevious && <button type="button" onClick={onUsePrevious} className="rounded-full bg-white px-4 py-2 text-sm font-bold">Reopen previous results · {previousLabel}</button>}
 
       {canPlay && (
         <div

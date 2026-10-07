@@ -15,6 +15,7 @@
 //     https://operations.osmfoundation.org/policies/nominatim/
 //   - You MUST show "© OpenStreetMap contributors" in the app.
 
+import { fetchWithTimeout } from '../utils/network'
 import { distanceInKm } from '../utils/geo'
 import { formatOsmAddress, formatReverseAddress } from '../utils/address'
 
@@ -24,7 +25,7 @@ const PLACES_API_URL = '/api/places' // same website, so no CORS problems
 
 // Bump this whenever api/places.js starts sending new data. It changes the URL,
 // so Vercel's CDN can't hand out an old cached answer that's missing it.
-const PLACES_API_VERSION = '2'
+const PLACES_API_VERSION = '4'
 
 // Our server tries 2 Overpass servers (12 s each), so wait a little longer than that.
 const PLACES_TIMEOUT_MS = 30000
@@ -75,7 +76,7 @@ export async function geocode(text) {
     'accept-language': 'en',
   })
 
-  const response = await politely(() => fetch(`${NOMINATIM_URL}?${params}`))
+  const response = await politely(() => fetchWithTimeout(`${NOMINATIM_URL}?${params}`))
   if (!response.ok) {
     throw new Error(`Location search failed (error ${response.status}). Try again in a moment.`)
   }
@@ -83,25 +84,20 @@ export async function geocode(text) {
   /** @type {Array<{place_id: number, lat: string, lon: string, display_name: string}>} */
   const results = await response.json()
 
-  const locations = results.map((r) => ({
-    lat: Number(r.lat), // Nominatim sends numbers as strings: "3.0486592"
-    lng: Number(r.lon), // ...and calls it "lon", we call it "lng"
-    label: shortenLabel(r.display_name),
-  }))
-
-  // OSM often has several objects with the same name (e.g. a train station
-  // AND its stop). Showing identical rows confuses users, so keep the first.
-  const seenLabels = new Set()
-  return locations.filter((loc) => {
-    if (seenLabels.has(loc.label)) return false
-    seenLabels.add(loc.label)
-    return true
-  })
+  return locationCandidates(results)
 }
 
-/** "Bandar Tun Hussein Onn, Cheras–Kajang Expressway, Cheras, Kajang, ..." -> first 3 parts */
-function shortenLabel(displayName) {
-  return displayName.split(', ').slice(0, 3).join(', ')
+export function locationCandidates(results) {
+  if (!Array.isArray(results)) return []
+  const seen = new Set()
+  return results.flatMap(r => {
+    const lat = Number(r.lat), lng = Number(r.lon)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180 || typeof r.display_name !== 'string') return []
+    const key = `${lat.toFixed(5)},${lng.toFixed(5)}`
+    if (seen.has(key)) return []
+    seen.add(key)
+    return [{ lat, lng, label: r.display_name, locationType: r.type?.replaceAll('_', ' ') ?? 'map location' }]
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -131,7 +127,7 @@ export function reverseGeocode(lat, lng) {
       'accept-language': 'en',
     })
 
-    const request = politely(() => fetch(`${NOMINATIM_REVERSE_URL}?${params}`))
+    const request = politely(() => fetchWithTimeout(`${NOMINATIM_REVERSE_URL}?${params}`))
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => formatReverseAddress(data?.address))
       .catch(() => null)
@@ -157,10 +153,12 @@ export function reverseGeocode(lat, lng) {
  * @returns {import('../models').Restaurant | null}
  */
 function toRestaurant(element, center) {
+  if (!element || typeof element !== 'object') return null
   const { lat, lon: lng } = element
-  if (lat == null || lng == null) return null
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null
 
   const tags = element.tags ?? {}
+  if (typeof tags.name !== 'string' || !tags.name.trim()) return null
 
   return {
     id: `osm-${element.type}-${element.id}`,
@@ -196,7 +194,7 @@ const RETRY_DELAY_MS = 1500
 /** One request to /api/places, with friendly errors when no answer arrives at all. */
 async function fetchPlaces(url) {
   try {
-    return await fetch(url, { signal: AbortSignal.timeout(PLACES_TIMEOUT_MS) })
+    return await fetchWithTimeout(url, {}, PLACES_TIMEOUT_MS)
   } catch (err) {
     // fetch() only THROWS when no answer arrived at all: no internet, or our timeout.
     // Without this, users would see the browser's raw "Failed to fetch".
@@ -223,7 +221,10 @@ export async function searchNearbyPlaces({ center, radiusKm, placeTypes }) {
     v: PLACES_API_VERSION,
   })
   const url = `${PLACES_API_URL}?${params}`
-  if (cache.has(url)) return cache.get(url)
+  const cached = cache.get(url)
+  if (cached && Date.now() - cached.cachedAt < 5 * 60 * 1000) {
+    return mapPlaces(cached.elements, center, radiusKm)
+  }
 
   let response = await fetchPlaces(url)
   if (BUSY_STATUSES.includes(response.status)) {
@@ -239,11 +240,14 @@ export async function searchNearbyPlaces({ center, radiusKm, placeTypes }) {
     throw new Error(data?.error ?? `Map search failed (error ${response.status}). Please try again.`)
   }
 
-  const places = data.elements
-    .map((element) => toRestaurant(element, center))
-    .filter((place) => place !== null)
-    .sort((a, b) => a.distanceInKm - b.distanceInKm)
+  if (!Array.isArray(data?.elements)) throw new Error('The map returned an invalid response. Please retry.')
+  cache.set(url, { elements: data.elements, cachedAt: Date.now() })
+  return mapPlaces(data.elements, center, radiusKm)
+}
 
-  cache.set(url, places)
-  return places
+function mapPlaces(elements, center, radiusKm) {
+  return elements
+    .map(element => toRestaurant(element, center))
+    .filter(place => place !== null && place.distanceInKm <= radiusKm)
+    .sort((a, b) => a.distanceInKm - b.distanceInKm)
 }

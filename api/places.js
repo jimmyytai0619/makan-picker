@@ -80,7 +80,9 @@ function parseParams(searchParams) {
  * searches in one query. `( … ; … );` means "give me both, together".
  */
 function buildQuery({ lat, lng, radiusKm, types }) {
-  const around = `(around:${Math.round(radiusKm * 1000)},${lat.toFixed(5)},${lng.toFixed(5)})`
+  // Cover the maximum shift from the browser's rounded center (~79 m).
+  // The browser still excludes every place outside the exact requested radius.
+  const around = `(around:${Math.round(radiusKm * 1000) + 80},${lat.toFixed(5)},${lng.toFixed(5)})`
   const searches = ['amenity', 'shop']
     .map((key) => {
       const values = types.filter((type) => PLACE_TYPES[type] === key)

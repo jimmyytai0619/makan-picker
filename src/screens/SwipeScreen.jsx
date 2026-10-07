@@ -15,7 +15,6 @@ import Confetti from '../components/Confetti'
  *   restaurants: import('../models').Restaurant[],
  *   currentIndex: number,
  *   likedCount: number,
- *   isShared: boolean,
  *   canUndo: boolean,
  *   onSwipe: (r: import('../models').Restaurant, liked: boolean) => void,
  *   onUndo: () => void,
@@ -27,9 +26,13 @@ import Confetti from '../components/Confetti'
  */
 export default function SwipeScreen({
   restaurants,
+  locationLabel,
+  radiusKm,
+  isNearby,
+  isFavourite,
+  onFavourite,
   currentIndex,
   likedCount,
-  isShared,
   canUndo,
   onSwipe,
   onUndo,
@@ -159,6 +162,7 @@ export default function SwipeScreen({
         </button>
       </div>
 
+      {isNearby && <p className="text-xs font-semibold text-plum/60">{restaurants.length} mapped place{restaurants.length === 1 ? '' : 's'} within {radiusKm} km of {locationLabel}. {restaurants.length === 1 ? 'Only one matches; try clearing your craving or increasing the radius.' : ''}</p>}
       <div className="relative">
         {/* The next card peeks out behind, like a real stack */}
         {next && (
@@ -174,7 +178,9 @@ export default function SwipeScreen({
         </div>
       </div>
 
-      <p className="text-center text-xs font-bold text-plum/40">Swipe right if it looks yummy 😋 · left to skip</p>
+      <p className="text-center text-xs font-bold text-plum/40">Swipe right to save in Library 😋 · left to skip</p>
+
+      {onFavourite && <button onClick={onFavourite} disabled={exit !== null} aria-pressed={isFavourite} className="rounded-full bg-white py-2 text-sm font-bold text-candy-pink">{isFavourite ? '★ Saved in Library' : '☆ Save favourite in Library'}</button>}
 
       <ActionButtons
         onSkip={() => setExit('left')}
@@ -208,7 +214,7 @@ export default function SwipeScreen({
           disabled={exit !== null}
           className="self-center rounded-full bg-white/80 px-3 py-1.5 text-xs font-extrabold text-plum/50 ring-1 ring-candy-pink-soft transition hover:text-candy-pink active:scale-95 disabled:opacity-40"
         >
-          🚫 Closed down? {isShared ? 'Remove for everyone' : 'Remove it'}
+          🚫 Hide on this device
         </button>
       )}
     </div>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { geocode } from '../services/osm'
+import { googleMapsPlaceUrl } from '../utils/address'
 import { getCurrentPosition } from '../utils/geo'
 
 /**
@@ -58,7 +59,8 @@ export default function LocationPicker({ value, onChange }) {
   if (value) {
     return (
       <div className="flex items-center justify-between gap-3 rounded-2xl bg-candy-pink-soft/60 p-3">
-        <span className="font-bold text-plum">📍 {value.label}</span>
+        <span className="min-w-0 font-bold text-plum">📍 {value.label === 'My current location' ? 'Last selected GPS position' : value.label}</span>
+        <a href={googleMapsPlaceUrl(value)} target="_blank" rel="noreferrer" className="shrink-0 text-xs font-bold text-candy-pink">Check pin ↗</a>
         <button
           type="button"
           onClick={() => onChange(null)}
@@ -109,6 +111,7 @@ export default function LocationPicker({ value, onChange }) {
 
       {error && <p className="text-sm font-semibold text-rose-500">{error}</p>}
 
+      {results.length > 0 && <p className="text-sm font-bold text-plum/70">Tap the correct location below. Check the area and map pin before searching.</p>}
       {results.length > 0 && (
         <ul className="divide-y divide-candy-pink-soft overflow-hidden rounded-2xl bg-white ring-1 ring-candy-pink-soft">
           {results.map((r) => (
@@ -118,7 +121,8 @@ export default function LocationPicker({ value, onChange }) {
                 onClick={() => handlePick(r)}
                 className="w-full px-4 py-3 text-left font-semibold text-plum hover:bg-candy-pink-soft/60"
               >
-                {r.label}
+                <span className="block">{r.label}</span>
+                <span className="block text-xs font-normal text-plum/60">{r.locationType}{r.locationType === 'bus stop' ? ' · nearby stop, not the building itself' : ''}</span>
               </button>
             </li>
           ))}

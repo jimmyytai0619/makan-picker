@@ -53,7 +53,7 @@ function prefersReducedMotion() {
  *   onBack: () => void,
  * }} props
  */
-export default function RouletteScreen({ candidates, totalCount, onShuffle, onPicked, onBack }) {
+export default function RouletteScreen({ candidates, totalCount, onShuffle, onPicked, onLanded, onBack }) {
   const [rotation, setRotation] = useState(0) // wheel angle in degrees (keeps growing)
   const [isSpinning, setIsSpinning] = useState(false)
   const [winnerIndex, setWinnerIndex] = useState(null)
@@ -88,6 +88,7 @@ export default function RouletteScreen({ candidates, totalCount, onShuffle, onPi
     timerRef.current = setTimeout(() => {
       setIsSpinning(false)
       setWinnerIndex(pick)
+      onLanded?.(candidates[pick])
       setSpinCount((n) => n + 1)
       // Small buzz on Android phones (iPhones ignore it). Browsers only allow it
       // after a real tap on the page, so check first to avoid a console error.

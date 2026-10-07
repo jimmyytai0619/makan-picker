@@ -25,10 +25,13 @@
 - **Two ways to decide:** 👆 **Swipe** (Tinder style: right = yum, left = nope) or 🎡 **Roulette** over every place nearby
 - **Spin your picks:** after 2 likes, a *Spin my picks* button appears (with confetti) so the wheel chooses between them
 - **Real places near you:** type an area or use GPS; cafes, restaurants, fast food, bakeries and bubble tea from OpenStreetMap
-- **Useful cards:** distance, address (or nearest road), cuisine, open now / closed now, a *Photos & reviews* link to Google Maps
+- **Useful cards:** distance, address (or nearest road), cuisine, scheduled open / closed (Malaysia time), an exact coordinate pin plus a separate review search in Google Maps
 - **Go there:** one tap opens directions in Google Maps or Waze
 - **My Cafes:** paste cafes you saved on Instagram / Xiaohongshu and swipe or spin them too
-- **Closed down? Remove it for everyone:** a shared list, with a *Removed places* page to restore mistakes
+- **Personal hiding:** hide a place on this device, with a *Hidden places* page to restore it
+- **Remembered settings:** your last area, distance, craving and play style are ready next time; GPS is requested only when you tap it
+- **Search recovery:** retry failed searches or reopen the last successful nearby results, labelled with their save time
+- **Favourites and recent winners:** swipe right or save a favourite to keep places in the Library, revisit your last 20 different wheel winners, or exclude them from a new search
 - **Fun while you wait:** a noodle-bowl loading screen with a catch-the-snacks mini game (and your best score)
 - **Pastel candy design**, with "Reduce motion" respected for people who turn it on
 
@@ -40,16 +43,13 @@ flowchart LR
   A -->|/api/places| P[Vercel function<br/>api/places.js]
   P -->|query| O[Overpass<br/>OSM place search]
   P -.->|if busy| M[Backup mirror]
-  A -->|/api/removed| R[Vercel function<br/>api/removed.js]
-  R -->|secret key stays here| S[(Supabase<br/>Postgres)]
+  A --> L[(Browser storage<br/>settings, previous results,<br/>hidden places and Library)]
 ```
 
 - **Why a server in the middle?** Overpass rejects browser requests from the live site, but accepts server ones. The
   function also checks every input, tries a backup mirror when the main server is busy, and lets Vercel's CDN
   cache answers for a day, so repeat searches are instant.
-- **The shared "closed down" list** lives in Supabase. Only the server holds the secret key, and Row Level Security is on with no
-  public policies. Removals appear straight away (optimistic update). If the server can't be reached, they wait on the phone and are
-  sent later, so nothing is lost.
+- **Personal lists** live in browser storage on this device. Hiding and restoring places never changes anyone else's results. Storage failures do not stop the current session. The old shared-removals server endpoint remains as legacy code.
 - **The roulette is honest:** the winner is picked first, then the exact rotation is calculated so the wheel stops on it.
   Tests check every wheel size from 1 to 25 and every pocket.
 
@@ -59,7 +59,7 @@ flowchart LR
 |---|---|---|
 | OpenStreetMap, not Google Places | Free, no API key or credit card | No ratings or photos; the map rarely knows when a place closes (hence the shared removed list) |
 | Own `/api/places` server function | Overpass blocks the live site's browser requests | A little more code, but also caching and a fallback |
-| Supabase for the removed list | Free Postgres, fits Vercel, easy to inspect | The secret key must stay on the server |
+| Personal hidden places in `localStorage` | One user cannot hide places for everyone | Each device has its own list |
 | My Cafes in `localStorage` | No accounts needed | Each device has its own list |
 
 ## Tech
@@ -69,7 +69,7 @@ OpenStreetMap (Nominatim + Overpass) · Vitest · GitHub Actions
 
 ## Engineering highlights
 
-- **70 automated tests** (Vitest), run by GitHub Actions on every pull request; Vercel builds a preview for each PR
+- **Automated tests** (Vitest), run by GitHub Actions on every pull request; Vercel builds a preview for each PR
 - Every change goes through a branch, a pull request, the checks, a merge, and then a check of the **live** site
 - Server input validation, safe links only (no `javascript:` URLs from map data), and no secrets in the browser
 - Polite use of free services: a queue for Nominatim (max 1 request per second), caching, and only one retry when busy
@@ -82,15 +82,10 @@ npm install
 npm run dev      # http://localhost:5173 (add -- --host to open it on your phone)
 npm test         # run the tests
 npm run build    # build like Vercel does
+npm run test:e2e # mobile-layout browser regression tests (install Chromium first)
 ```
 
-The shared removed list works without any setup when you run the app locally (it's kept in memory). To connect a real database, create the table
-with [`docs/supabase.sql`](docs/supabase.sql) and set these on the server (e.g. via Vercel → Storage → Supabase):
-
-| Variable | What it is |
-|---|---|
-| `SUPABASE_URL` | Your Supabase project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | The secret key (server only, never put it in `VITE_` variables) |
+Personal preferences, hidden places, favourites and recent winners work without database setup. The legacy `/api/removed` endpoint can still be configured using [`docs/supabase.sql`](docs/supabase.sql); the current app does not call it.
 
 ## Project structure
 
@@ -98,9 +93,9 @@ with [`docs/supabase.sql`](docs/supabase.sql) and set these on the server (e.g. 
 api/            places.js (map search proxy) · removed.js + _removedStore.js (shared removed list)
 src/
   App.jsx       app state, search flow, which screen to show
-  screens/      Filter · Swipe · Picks · Roulette · Result · Saved (My Cafes) · Removed
+  screens/      Filter · Swipe · Picks · Roulette · Result · Saved (My Cafes) · Removed · Library
   components/   RestaurantCard · SwipeableCard · LoadingScreen · Confetti · …
-  hooks/        useSavedCafes · useRemovedPlaces · usePlaceAddress
+  hooks/        useSavedCafes · useRemovedPlaces · usePlaceLibrary · usePlaceAddress
   services/     osm.js (all map calls) · removed.js
   utils/        pure, tested helpers (roulette maths, swipe, address, likes, …)
 docs/           notes on how it was built

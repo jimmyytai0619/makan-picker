@@ -37,21 +37,15 @@ export function formatReverseAddress(address = {}) {
   return unique.length > 0 ? unique.join(', ') : null
 }
 
-/**
- * A Google Maps link that opens the real listing: photos, reviews, hours.
- *
- * With coordinates, it searches the name AROUND that exact spot, so the right
- * branch of a chain shows up. (Google's official "?api=1" link format can't
- * combine a name with a location, so this uses the normal /search/.../@ form.)
- * Saved cafes have no coordinates, so they just search the name.
- *
- * @param {{ name: string, lat: number | null, lng: number | null }} place
- */
+/** Open the selected map coordinates, so a chain name cannot switch branches. */
 export function googleMapsPlaceUrl({ name, lat, lng }) {
-  if (lat != null && lng != null) {
-    return `https://www.google.com/maps/search/${encodeURIComponent(name)}/@${lat},${lng},17z`
-  }
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`
+  const query = Number.isFinite(lat) && Number.isFinite(lng) ? `${lat},${lng}` : name
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+}
+
+/** A listing search is separate from the exact map pin and can return other branches. */
+export function googleMapsReviewsUrl({ name, address }) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([name, address, 'Malaysia'].filter(Boolean).join(', '))}`
 }
 
 /**

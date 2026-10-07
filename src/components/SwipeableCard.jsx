@@ -60,7 +60,7 @@ export default function SwipeableCard({ children, onSwipe, exit = null }) {
       drag.active = true
       setIsDragging(true)
       // Keep receiving moves even if the finger leaves the card.
-      event.currentTarget.setPointerCapture(drag.pointerId)
+      event.currentTarget.setPointerCapture?.(drag.pointerId)
     }
 
     drag.dx = dx
